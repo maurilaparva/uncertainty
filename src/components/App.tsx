@@ -24,6 +24,7 @@ import dagre from 'dagre';
 import { useAtom } from 'jotai';
 import { gptTriplesAtom, recommendationsAtom, backendDataAtom } from '../lib/state.ts';
 import { /* fetchBackendData, */ highLevelNodes, colorForCategory, normalizeCategory } from '../lib/utils.tsx';
+import { loadMistral } from './model/model.ts';
 
 import FlowComponent from './vis-flow/index.tsx';
 import { Button } from './ui/button.tsx';
@@ -359,6 +360,15 @@ const getEdgeRelationBase = (e: any) => {
 };
 
 export function Chat({ id, initialMessages }: ChatProps) {
+  const [mistral, setMistral] = useState<any | null>(null);
+  useEffect(() => {
+    (async () => {
+      const model = await loadMistral();
+      setMistral(model);
+      console.log('✅ Mistral model loaded');
+    })();
+  }, []);
+
   const lastEntityCategoriesRef = useRef<Record<string, string>>({});
   const reloadFlag = useRef(false);
   const initialRender = useRef(true);
@@ -647,29 +657,37 @@ Use the above examples only as a guide for format and structure. Do not reuse th
       aborterRef.current = new AbortController();
       let buffered = '';
 
-      await callOpenAIStream(
-        [...messages, userMsg],
-        apiKey as string,
-        // onFirstToken — set to the computed pair index (do NOT +1)
-        () => {
-          setActiveStep(pairIndex);
-          if (!location.pathname.includes('chat')) {
-            navigate(`/chat/${id}`, { replace: true });
-          }
-        },
-        // onDelta
-        (delta) => {
-          buffered += delta;
-          // replace assistant msg immutably so memoized children update
-          setMessages(prev =>
-            prev.map(m =>
-              m.id === assistantMsgId
-                ? { ...m, content: (m.content || '') + delta }
-                : m
-            )
-          );
-        }
-      );
+      // await callOpenAIStream(
+      //   [...messages, userMsg],
+      //   apiKey as string,
+      //   // onFirstToken — set to the computed pair index (do NOT +1)
+      //   () => {
+      //     setActiveStep(pairIndex);
+      //     if (!location.pathname.includes('chat')) {
+      //       navigate(`/chat/${id}`, { replace: true });
+      //     }
+      //   },
+      //   // onDelta
+      //   (delta) => {
+      //     buffered += delta;
+      //     // replace assistant msg immutably so memoized children update
+      //     setMessages(prev =>
+      //       prev.map(m =>
+      //         m.id === assistantMsgId
+      //           ? { ...m, content: (m.content || '') + delta }
+      //           : m
+      //       )
+      //     );
+      //   }
+      // );
+      if (!mistral) {
+        toast.error('Model still loading...');
+        return;
+      }
+
+      // simple test inference for now
+      const result = await mistral(userContent, { max_new_tokens: 128 });
+      console.log('🧠 Mistral output:', result);
 
       // final parse
       const parts = (buffered || '').split('||');
