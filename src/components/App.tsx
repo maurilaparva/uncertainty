@@ -24,7 +24,7 @@ import dagre from 'dagre';
 import { useAtom } from 'jotai';
 import { gptTriplesAtom, recommendationsAtom, backendDataAtom } from '../lib/state.ts';
 import { /* fetchBackendData, */ highLevelNodes, colorForCategory, normalizeCategory } from '../lib/utils.tsx';
-import { loadMistral } from './model/model.ts';
+import { loadPhi3 } from './model/model.ts';
 
 import FlowComponent from './vis-flow/index.tsx';
 import { Button } from './ui/button.tsx';
@@ -360,12 +360,12 @@ const getEdgeRelationBase = (e: any) => {
 };
 
 export function Chat({ id, initialMessages }: ChatProps) {
-  const [mistral, setMistral] = useState<any | null>(null);
+  const [phi3, setPhi3] = useState<any | null>(null);
   useEffect(() => {
     (async () => {
-      const model = await loadMistral();
-      setMistral(model);
-      console.log('✅ Mistral model loaded');
+      const model = await loadPhi3();
+      setPhi3(model);
+      console.log('✅ Phi3 model loaded');
     })();
   }, []);
 
@@ -615,12 +615,10 @@ Use the above examples only as a guide for format and structure. Do not reuse th
     }
   };
 
-  // ===== append() with streaming =====
-  const append = async (msg: Partial<Message> | string) => {
+    const append = async (msg: Partial<Message> | string) => {
     const userContent = typeof msg === 'string' ? msg : (msg.content || '');
     if (!userContent.trim()) return;
 
-    // push user message (with createdAt)
     const userMsg: Msg = {
       id: crypto.randomUUID(),
       role: 'user',
@@ -630,16 +628,6 @@ Use the above examples only as a guide for format and structure. Do not reuse th
     setMessages(prev => [...prev, userMsg]);
     setInput('');
 
-    // key
-    const apiKey = previewToken || (() => {
-      try { return JSON.parse(localStorage.getItem('ai-token') || 'null'); } catch { return localStorage.getItem('ai-token'); }
-    })();
-    if (!apiKey) {
-      toast.error('Missing OpenAI API key');
-      return;
-    }
-
-    // assistant placeholder (with createdAt)
     const assistantMsgId = crypto.randomUUID();
     const assistantPlaceholder: Msg = {
       id: assistantMsgId,
@@ -649,118 +637,82 @@ Use the above examples only as a guide for format and structure. Do not reuse th
     };
     setMessages(prev => [...prev, assistantPlaceholder]);
 
-    // compute the current pair index (0-based)
-    const pairIndex = Math.floor(([...messages, userMsg, assistantPlaceholder].length) / 2) - 1;
-
     try {
       setIsLoading(true);
-      aborterRef.current = new AbortController();
-      let buffered = '';
 
-      // await callOpenAIStream(
-      //   [...messages, userMsg],
-      //   apiKey as string,
-      //   // onFirstToken — set to the computed pair index (do NOT +1)
-      //   () => {
-      //     setActiveStep(pairIndex);
-      //     if (!location.pathname.includes('chat')) {
-      //       navigate(`/chat/${id}`, { replace: true });
-      //     }
-      //   },
-      //   // onDelta
-      //   (delta) => {
-      //     buffered += delta;
-      //     // replace assistant msg immutably so memoized children update
-      //     setMessages(prev =>
-      //       prev.map(m =>
-      //         m.id === assistantMsgId
-      //           ? { ...m, content: (m.content || '') + delta }
-      //           : m
-      //       )
-      //     );
-      //   }
-      // );
-      if (!mistral) {
+      if (!phi3) {
         toast.error('Model still loading...');
         return;
       }
 
-      // simple test inference for now
-      const result = await mistral(userContent, { max_new_tokens: 128 });
+      // === Use Mistral for both generation + self-confidence ===
+      const phi3Prompt = `
+You are a biomedical assistant. 
+Answer the user’s question in 1–3 paragraphs.
+
+After your answer, append:
+|| CONF:{"overall":<0–100 integer>,
+          "per_paragraph":[<0–100 ints per paragraph>],
+          "verbal":"I'm <short self-confidence sentence>"}.
+
+Example:
+Main response text here...
+
+|| CONF:{"overall":87,"per_paragraph":[90,84],"verbal":"I'm fairly confident overall."}
+`;
+
+      const fullPrompt = `${phi3Prompt}\n\nUser question:\n${userContent}`;
+      const result = await phi3(fullPrompt, { max_new_tokens: 400 });
       console.log('🧠 Mistral output:', result);
 
-      // final parse
-      const parts = (buffered || '').split('||');
-      const { relations: triples, entityCategories } = extractRelations(parts[0] || '');
-      if (triples?.length) setGptTriples(triples);
-      lastEntityCategoriesRef.current = entityCategories;
-      // --- NEW: parse self-reported confidence and annotate paragraphs
-      let conf: { overall?: number; perParagraph?: number[]; verbal?: string } | undefined;
-      try {
-        const rawConf = (parts[2] || '').trim();
-        // expected "CONF:{...}"
-        const jsonStr = rawConf.startsWith('CONF:') ? rawConf.slice(5) : '';
-        if (jsonStr) conf = JSON.parse(jsonStr);
-      } catch (e) {
-        console.warn('[chat] confidence JSON parse failed');
+      // Split on your delimiter and extract parts
+      const parts = result.split('||');
+      const mainText = (parts[0] || '').trim();
+      const rawConf = (parts[1] || '').trim();
+
+      let conf: { overall?: number; per_paragraph?: number[]; verbal?: string } | undefined;
+      if (rawConf.startsWith('CONF:')) {
+        try {
+          conf = JSON.parse(rawConf.slice(5));
+        } catch (err) {
+          console.warn('⚠️ Failed to parse CONF JSON', err);
+        }
       }
 
-      // If we have per-paragraph confidence, append a small line under each paragraph
-      if (conf?.perParagraph && Array.isArray(conf.perParagraph)) {
-        setMessages(prev => prev.map(m => {
-          // only modify the just-finished assistant message we streamed
-          const lastAssistant = prev.findLast(x => x.role === 'assistant');
-          if (!lastAssistant || m.id !== lastAssistant.id) return m;
+      // Annotate paragraphs with per-paragraph self-confidence
+      let finalText = mainText;
+      if (conf?.per_paragraph && Array.isArray(conf.per_paragraph)) {
+        const paras = mainText.split(/\n\s*\n/);
+        const pp = conf.per_paragraph.length === paras.length
+          ? conf.per_paragraph
+          : Array(paras.length).fill(conf.overall ?? 0);
 
-          // parts[0] is the main response text
-          const main = (parts[0] || '').trim();
-          const paras = main.split(/\n\s*\n/); // split on blank lines
-
-          // Align perParagraph length; if mismatch, fallback to overall for all
-          const pp = conf.perParagraph.length === paras.length
-            ? conf.perParagraph
-            : Array(paras.length).fill(conf.overall ?? 0);
-
-          const decorated = paras.map((p, i) => {
-            const pct = Math.max(0, Math.min(100, Math.round(pp[i] ?? 0)));
-            // small, subtle line; works with markdown renderers too
-            return `${p}\n\n_(model self-confidence: ${pct}% )_`;
-          }).join('\n\n');
-
-          // Optional footer with overall + verbal line
-          const footer = (conf.overall != null || conf.verbal)
-            ?  `\n\n_Confidence:_ ${conf.overall != null ? `${Math.round(conf.overall)}%` : ''}${conf.overall != null && conf.verbal ? ' · ' : ''}${conf.verbal ?? ''}`
-            : '';
-
-          return {
-            ...m,
-            content: `${decorated}${footer}`,
-            selfConf: conf
-          };
-        }));
-      } else if (conf?.overall != null || conf?.verbal) {
-        // no per-paragraph array, but we at least show a single footer
-        setMessages(prev => prev.map(m => {
-          const lastAssistant = prev.findLast(x => x.role === 'assistant');
-          if (!lastAssistant || m.id !== lastAssistant.id) return m;
-          const footer = `\n\n _Confidence:_ ${conf?.overall != null ? `${Math.round(conf.overall)}%` : ''}${conf?.overall != null && conf?.verbal ? ' · ' : ''}${conf?.verbal ?? ''}`;
-          return { ...m, content: (parts[0] || '') + footer, selfConf: conf };
-        }));
+        finalText = paras.map((p, i) => {
+          const pct = Math.max(0, Math.min(100, Math.round(pp[i] ?? 0)));
+          return `${p}\n\n_(model self-confidence: ${pct}% )_`;
+        }).join('\n\n');
       }
 
+      // Footer with overall + verbal confidence
+      if (conf?.overall != null || conf?.verbal) {
+        finalText += `\n\n_Confidence:_ ${conf?.overall != null ? `${Math.round(conf.overall)}%` : ''}${conf?.overall != null && conf?.verbal ? ' · ' : ''}${conf?.verbal ?? ''}`;
+      }
+
+      // Update assistant message with annotated output
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === assistantMsgId ? { ...m, content: finalText, selfConf: conf } : m
+        )
+      );
 
     } catch (err: any) {
-      if (err?.name === 'AbortError') {
-        console.warn('[chat] aborted');
-      } else {
-        console.error(err);
-        toast.error('OpenAI request failed. Check your key and network.');
-      }
+      console.error('❌ Mistral inference failed:', err);
+      toast.error('Mistral request failed.');
     } finally {
       setIsLoading(false);
-      aborterRef.current = null;
     }
   };
+
 
   const stop = () => {
     aborterRef.current?.abort();
