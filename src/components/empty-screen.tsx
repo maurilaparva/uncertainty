@@ -64,9 +64,19 @@ export function EmptyScreen({
 
   if (!isModelLoaded) {
     return (
-      <div className="flex items-center justify-center h-screen bg-white">
-        <h1 className="text-xl font-semibold text-gray-700 animate-pulse">
-          Model loading{dots}
+      <div className="flex items-center justify-center h-screen bg-white transition-all duration-700">
+        <h1
+          className="text-xl font-medium text-gray-800 tracking-tight"
+          style={{
+            fontFamily: 'Inter, system-ui, sans-serif',
+            fontSmooth: 'always',
+            WebkitFontSmoothing: 'antialiased',
+            MozOsxFontSmoothing: 'grayscale',
+          }}
+        >
+          <span className="animate-pulse opacity-80">
+            Loading model{dots}
+          </span>
         </h1>
       </div>
     );
