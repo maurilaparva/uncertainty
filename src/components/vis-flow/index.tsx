@@ -87,27 +87,24 @@ export default function FlowComponent() {
         id: 'a1',
         label: 'Limited clinical trials',
         tau: 0.3,
-        attackers: [],
-        supporters: [],
       },
       {
         id: 'a2',
         label: 'FDA approval evidence',
         tau: 0.8,
-        attackers: [],
-        supporters: [],
       },
     ]
 
     const sigma = computeDfQuad(demoArgs)
 
-    // Layout positions
+    // ✅ Fixed layout + edge anchor directions
     const n: Node[] = [
       {
         id: 'claim',
         data: { label: `${demoArgs[0].label}\nσ=${sigma['claim'].toFixed(2)}` },
-        position: { x: 300, y: 50 },
-        sourcePosition: 'bottom', // ✅ outgoing edges go downward
+        position: { x: 300, y: 80 },
+        targetPosition: 'bottom', // ✅ incoming edges attach to bottom
+        sourcePosition: 'top',    // ✅ outgoing edges (if any) go upward
         style: {
           background: `rgba(230, 215, 180, ${0.4 + sigma['claim'] * 0.6})`,
           border: `2px solid ${sigma['claim'] > 0.5 ? '#4e944f' : '#c43e3e'}`,
@@ -117,13 +114,15 @@ export default function FlowComponent() {
           fontWeight: 500,
           whiteSpace: 'pre-line',
           transition: 'all 0.6s ease',
+          fontSize: '14px', // reverted smaller consistent font
         },
       },
       {
         id: 'a1',
         data: { label: `${demoArgs[1].label}\nσ=${sigma['a1'].toFixed(2)}` },
         position: { x: 150, y: 300 },
-        targetPosition: 'top', // ✅ connect upward to claim
+        targetPosition: 'bottom',
+        sourcePosition: 'top',
         style: {
           background: `rgba(230, 215, 180, ${0.4 + sigma['a1'] * 0.6})`,
           border: '2px solid #c43e3e',
@@ -132,13 +131,15 @@ export default function FlowComponent() {
           textAlign: 'center',
           fontWeight: 500,
           whiteSpace: 'pre-line',
+          fontSize: '14px',
         },
       },
       {
         id: 'a2',
         data: { label: `${demoArgs[2].label}\nσ=${sigma['a2'].toFixed(2)}` },
         position: { x: 450, y: 300 },
-        targetPosition: 'top', // ✅ connect upward to claim
+        targetPosition: 'bottom',
+        sourcePosition: 'top',
         style: {
           background: `rgba(230, 215, 180, ${0.4 + sigma['a2'] * 0.6})`,
           border: '2px solid #4e944f',
@@ -147,6 +148,7 @@ export default function FlowComponent() {
           textAlign: 'center',
           fontWeight: 500,
           whiteSpace: 'pre-line',
+          fontSize: '14px',
         },
       },
     ]
@@ -159,6 +161,7 @@ export default function FlowComponent() {
         label: 'attack',
         animated: true,
         style: { stroke: '#c43e3e', strokeWidth: 2 },
+        markerEnd: { type: 'arrowclosed', color: '#c43e3e' },
       },
       {
         id: 'a2-claim',
@@ -167,6 +170,7 @@ export default function FlowComponent() {
         label: 'support',
         animated: true,
         style: { stroke: '#4e944f', strokeWidth: 2 },
+        markerEnd: { type: 'arrowclosed', color: '#4e944f' },
       },
     ]
 
@@ -181,9 +185,9 @@ export default function FlowComponent() {
       style={{
         width: '100%',
         height: '550px',
-        border: '1px solid rgba(0,0,0,0.15)', // ✅ subtle outline
+        border: '1px solid rgba(0,0,0,0.15)',
         borderRadius: '10px',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.05)', // ✅ soft shadow
+        boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
         backgroundColor: '#fafafa',
         animation: 'fadeInSmooth 0.8s ease forwards',
       }}
@@ -196,7 +200,7 @@ export default function FlowComponent() {
         onConnect={onConnect}
         fitView
         proOptions={{ hideAttribution: true }} // ✅ removes “React Flow” watermark
-        zoomOnScroll={false} // ✅ disable zoom UI
+        zoomOnScroll={false}
         zoomOnPinch={false}
         panOnScroll={false}
         zoomOnDoubleClick={false}
@@ -205,7 +209,6 @@ export default function FlowComponent() {
         elementsSelectable={false}
       >
         <Background color="#ddd" gap={16} />
-        {/* ✅ Removed Controls component so no +/– buttons appear */}
       </ReactFlow>
     </div>
   )
