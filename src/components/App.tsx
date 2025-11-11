@@ -1,5 +1,4 @@
 'use Client'
-import { ChatPanel } from './chat-panel.tsx';
 // import { useChat } from 'ai/react';
 import { useLocalStorage } from '../lib/hooks/use-local-storage.ts';
 import { toast } from 'react-hot-toast';
@@ -1282,23 +1281,8 @@ useEffect(() => {
 
       )}
 
-      {/* Bottom Chat Panel */}
-      <ChatPanel
-        id={id}
-        isLoading={isLoading}
-        stop={stop}
-        append={append}
-        reload={reload}
-        messages={messages as Message[]}
-        input={input}
-        setInput={setInput}
-        recommendations={[]}
-        clickedLabel={
-          clickedNode?.data?.label ||
-          String(clickedNode?.id || '').replace(/^node-/, '') ||
-          ''
-        }
-      />
+      
+      
     </div>
   );
 }
