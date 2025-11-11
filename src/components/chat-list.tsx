@@ -4,6 +4,7 @@ import { useViewMode } from './ui/view-mode';
 import { ChatMessage } from './chat-message';
 import { CustomGraphNode, CustomGraphEdge } from '../lib/types';
 import React, { useEffect, useState } from 'react';
+import FlowComponent from './vis-flow/index.tsx'; // ✅ NEW import
 
 const stripCategories = (s: string) =>
   s
@@ -48,7 +49,6 @@ export function ChatList({
 
   if (!messages.length) return null;
 
-  // --- helper to parse demo content ---
   const parseDemo = (msg: any) => {
     try {
       const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg;
@@ -167,16 +167,6 @@ export function ChatList({
               key={i}
               onMouseEnter={() => (highlight ? setHoveredToken(t) : null)}
               onMouseLeave={() => (highlight ? setHoveredToken(null) : null)}
-              style={{
-                backgroundColor: color,
-                padding: highlight ? '1px 3px' : '1px 2px',
-                borderRadius: '3px',
-                border: highlight ? '0.5px solid rgba(0,0,0,0.08)' : 'none',
-                color: highlight ? (t.score > 0.9 ? '#fff' : '#222') : '#222',
-                marginRight: '2px',
-                cursor: highlight ? 'pointer' : 'default',
-                whiteSpace: 'pre',
-              }}
               className="opacity-0 animate-[fadeInUp_0.4s_ease_forwards] hover:scale-[1.05]"
               style={{
                 animationDelay: `${i * 25}ms`,
@@ -186,6 +176,8 @@ export function ChatList({
                 color: highlight ? (t.score > 0.9 ? '#fff' : '#222') : '#222',
                 padding: highlight ? '1px 3px' : '1px 2px',
                 marginRight: '2px',
+                cursor: highlight ? 'pointer' : 'default',
+                whiteSpace: 'pre',
                 transition: 'all 0.3s ease',
               }}
             >
@@ -227,10 +219,12 @@ export function ChatList({
             <div key={index} className="my-6 text-left">
               {viewMode === 'paragraph' && <RenderParagraphDemo data={demoData} />}
               {viewMode === 'token' && <RenderTokenDemo data={demoData} />}
-              {!['paragraph', 'token'].includes(viewMode ?? '') && (
-                <p className="text-gray-600 italic mt-2">
-                  [No visualization mode active — showing raw text:] {demoData.paragraph}
-                </p>
+              
+              {/* ✅ NEW: relation view renders your DF-QUAD FlowComponent */}
+              {viewMode === 'relation' && (
+                <div className="mt-6 fade-in">
+                  <FlowComponent />
+                </div>
               )}
             </div>
           );

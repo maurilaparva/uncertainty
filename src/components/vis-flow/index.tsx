@@ -1,209 +1,175 @@
-import React from "react";
-import { useEffect, useRef, useState } from "react";
-import {Background, ReactFlow, useReactFlow } from "reactflow";
-import CustomEdge from "./customEdge";
-import CustomNode from "./customNode";
-import FlowContext from "./flow-context";
-import { gptTriplesAtom } from "../../lib/state";
-import { categoryColorMapping } from "../../lib/utils";
-import { useAtom } from "jotai";
-import { Button } from "../ui/button";
-import { Spinner } from "@material-tailwind/react";
-import { Node,Edge } from "reactflow";
+'use client'
 
-const nodesTypes = {
-    custom: CustomNode
+import { useEffect, useState, useCallback } from 'react'
+import ReactFlow, {
+  addEdge,
+  applyEdgeChanges,
+  applyNodeChanges,
+  Background,
+  Controls,
+  Edge,
+  Node,
+  OnConnect,
+  OnEdgesChange,
+  OnNodesChange,
+} from 'reactflow'
+
+import 'reactflow/dist/style.css'
+
+// ------------------------------
+// DF-QuAD helper functions
+// ------------------------------
+interface Argument {
+  id: string
+  label: string
+  tau: number
+  attackers?: string[]
+  supporters?: string[]
 }
 
-const edgeTypes = {
-    custom: CustomEdge
+function computeDfQuad(args: Argument[]) {
+  const sigma: Record<string, number> = {}
+  args.forEach(a => (sigma[a.id] = a.tau))
+
+  const F = (vals: number[]) =>
+    vals.length === 0 ? 0 : 1 - vals.reduce((p, v) => p * Math.abs(1 - v), 1)
+
+  const C = (v0: number, va: number, vs: number) => {
+    if (va === vs) return v0
+    if (va > vs) return v0 - v0 * Math.abs(vs - va)
+    return v0 + (1 - v0) * Math.abs(vs - va)
+  }
+
+  for (let iter = 0; iter < 10; iter++) {
+    let delta = 0
+    for (const a of args) {
+      const va = F((a.attackers ?? []).map(id => sigma[id]))
+      const vs = F((a.supporters ?? []).map(id => sigma[id]))
+      const newVal = C(a.tau, va, vs)
+      delta = Math.max(delta, Math.abs(newVal - sigma[a.id]))
+      sigma[a.id] = newVal
+    }
+    if (delta < 1e-4) break
+  }
+  return sigma
 }
 
-const FlowComponent = ({
-    nodes,
-    edges,
-    onNodesChange,
-    onEdgesChange,
-    proOptions,
-    onConnect,
-    onInit,
-    isLoadingBackendData,
-    isLoading,
-    setClickedNode,
-    setLayoutDirection,
-    updateLayout,
-    continueConversation,
-    id,
-    append,
-    activeStep
+// ------------------------------
+// Main visualization component
+// ------------------------------
+export default function FlowComponent() {
+  console.log("✅ DF-QUAD FlowComponent loaded successfully");
+  const [nodes, setNodes] = useState<Node[]>([])
+  const [edges, setEdges] = useState<Edge[]>([])
 
-}: {
-    nodes: any
-    edges: any
-    onNodesChange: any
-    onEdgesChange: any
-    proOptions: any
-    onConnect: any
-    onInit: any
-    isLoadingBackendData: any
-    isLoading: any
-    setClickedNode: any,
-    setLayoutDirection: any
-    updateLayout: any,
-    continueConversation?: (recommendId: number, triples: string[][]) => void,
-    id: any,
-    append: any,
-    activeStep: any
+  const onNodesChange: OnNodesChange = useCallback(
+    chs => setNodes(nds => applyNodeChanges(chs, nds)),
+    []
+  )
 
-}) => {
-    const reactFlowInstance = useReactFlow()
-    const [gptTriples] = useAtom(gptTriplesAtom)
-    const gptTriplesRef = useRef(gptTriples)
-    const [totalRecommendations, setTotalRecommendations] = useState(0)
+  const onEdgesChange: OnEdgesChange = useCallback(
+    chs => setEdges(eds => applyEdgeChanges(chs, eds)),
+    []
+  )
 
-    useEffect(() => {
-        gptTriplesRef.current = gptTriples
-    }, [gptTriples])
-    
+  const onConnect: OnConnect = useCallback(
+    params => setEdges(eds => addEdge(params, eds)),
+    []
+  )
 
+  // ---- Demo ArgLLM structure ----
+  useEffect(() => {
+    const demoArgs: Argument[] = [
+      {
+        id: 'claim',
+        label: 'Dupilumab treats asthma',
+        tau: 0.5,
+        attackers: ['a1'],
+        supporters: ['a2'],
+      },
+      {
+        id: 'a1',
+        label: 'Limited clinical trials',
+        tau: 0.3,
+        attackers: [],
+        supporters: [],
+      },
+      {
+        id: 'a2',
+        label: 'FDA approval evidence',
+        tau: 0.8,
+        attackers: [],
+        supporters: [],
+      },
+    ]
 
-    useEffect(() => {
-        // Function to adjust view
-        const adjustView = () => {
-          // Ensure the instance is available
-          if (reactFlowInstance) {
-            // Fit view to include all nodes initially
-            reactFlowInstance.fitView({ padding: 0.2 })
-    
-            // Assuming you want to zoom in to the new nodes (with opacity 1) after fitting view
-            const newNodes = nodes.filter(node => node.style?.opacity === 1)
-            if (newNodes.length > 0) {
-              // Example logic to zoom into the area of new nodes
-              // Adjust according to your app's logic
-              const x = newNodes[0].position.x // Simplified, consider calculating the center or a specific target
-              const y = newNodes[0].position.y
-            }
-          }
-        }
-    
-        adjustView()
-      }, [nodes.length, reactFlowInstance])
+    const sigma = computeDfQuad(demoArgs)
 
-    const handleonNodeClick = async (event: any, node: any) => {
-        // Set hovered node id in a state that's accessible by the chat component
-        setClickedNode(node)
-    }
-    
-    const handleonNodeDoubleClick = () => {
-    // Clear hovered node id
-        setClickedNode(null)
-    }
-    const onRecommendationClick = async (recommendation: any) => {
-        // Handle recommendation button click
-        if (recommendation) {
-          await append({
-            id,
-            content: 'Can you tell me more about ' + recommendation.text + '?',
-            role: 'user'
-          })
-          const recommendationId = recommendation.id
-          // Use the current value of the refs, which is always up-to-date
-          const gptTriples = gptTriplesRef.current
-          // Assuming you have a way to trigger the continueConversation method from here
-          // You may need to lift state up or use a global state management solution
-          if (continueConversation) {
-            continueConversation(recommendationId, gptTriples)
-          }
-        }
-    }
-    
+    const n: Node[] = demoArgs.map((a, i) => ({
+      id: a.id,
+      data: {
+        label: `${a.label}\nσ=${sigma[a.id].toFixed(2)}`,
+      },
+      position:
+        i === 0
+          ? { x: 250, y: 50 }
+          : { x: 100 + i * 200, y: 250 },
+      style: {
+        background: `rgba(230, 215, 180, ${0.4 + sigma[a.id] * 0.6})`,
+        border: `2px solid ${sigma[a.id] > 0.5 ? '#4e944f' : '#c43e3e'}`,
+        borderRadius: 12,
+        padding: 8,
+        color: '#222',
+        fontWeight: 500,
+        whiteSpace: 'pre-line',
+        transition: 'all 0.6s ease',
+      },
+    }))
 
+    const e: Edge[] = [
+      {
+        id: 'a1-claim',
+        source: 'a1',
+        target: 'claim',
+        label: 'attack',
+        animated: true,
+        style: { stroke: '#c43e3e', strokeWidth: 2 },
+      },
+      {
+        id: 'a2-claim',
+        source: 'a2',
+        target: 'claim',
+        label: 'support',
+        animated: true,
+        style: { stroke: '#4e944f', strokeWidth: 2 },
+      },
+    ]
 
+    setNodes(n)
+    setEdges(e)
+  }, [])
 
-    return (
-
-        <FlowContext.Provider value={{ onRecommendationClick }}>
-            <div className="sticky top-3 left-10 pb-10 border rounded-md shadow-md bg-white dark:bg-gray-800"
-                style={{
-                width: 'calc(100% - 2rem)',
-                height: 'calc(65vh - 1rem)'
-                }}>
-                {isLoading && nodes.length === 0 && (
-                    <div className="absolute inset-0 bg-white bg-opacity-[65%] flex flex-wrap justify-center items-center z-10 p-[150px]">
-                        <div className="text-gray-700 text-[20px]">
-                            Wait for GPT responding...
-                        </div>
-                    </div>
-                )}
-
-                {isLoadingBackendData && !isLoading && (
-                        <div className="absolute inset-0 bg-white bg-opacity-[85%] flex flex-wrap justify-center items-center z-10 p-[150px]">
-                            <Spinner color="blue" className="h-[60px] w-[60px]" />
-                            <div className="basis-full h-0"></div>
-                            <div className="text-gray-700 text-[20px]">
-                            Waiting loading data from backend knowledge graph...
-                            <br />
-                            Searching 162,213 nodes and 1,017,319 edges...
-                            </div>
-                        </div>
-                )}
-
-                <ReactFlow
-                    nodes = {
-                        nodes
-                            .filter(node => node.step <= activeStep)
-                            .map(node => ({
-                            ...node,
-                            style: {
-                                backgroundColor: categoryColorMapping[node.category] || '#cccccc',
-                                borderRadius: 6,
-                                padding: 0,
-                                color: '#000',
-                                fontWeight: 500,
-                                fontSize: 14
-                            }
-                            }))
-                        }
-
-                    edges = {edges.filter(edge => edge.step <= activeStep)}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    fitView
-                    proOptions={proOptions}
-                    onConnect={onConnect}
-                    onInit={onInit}
-                    edgeTypes={edgeTypes}
-                    nodeTypes={nodesTypes}
-                    onNodeClick={handleonNodeClick}
-                    onNodeDoubleClick={handleonNodeDoubleClick}
-                >
-                    <Background color="#aaa" gap={16} />
-                </ReactFlow>
-                
-                <div className="m-2 gap-3 flex justify-between items-center">
-                    <Button
-                        variant="outline"
-                        onClick={() => {
-                            setLayoutDirection('TB')
-                            updateLayout('TB')
-                        }}>
-                        Top-Bottom Layout
-                    </Button>
-                    {totalRecommendations > 0 && (<div className="w-1/3 justify-between">Recommendation</div>)}
-                    <Button
-                            variant="outline"
-                            onClick={() => {
-                            setLayoutDirection('LR')
-                            updateLayout('LR')
-                            }}
-                        >
-                        Left-Right Layout
-                    </Button>
-                </div>
-            </div>
-
-        </FlowContext.Provider>
-        
-    )
+  // ------------------------------
+  return (
+    <div
+      className="fade-in"
+      style={{
+        width: '100%',
+        height: '550px',
+        animation: 'fadeInSmooth 0.8s ease forwards',
+      }}
+    >
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onConnect={onConnect}
+        fitView
+      >
+        <Background color="#bbb" gap={16} />
+        <Controls />
+      </ReactFlow>
+    </div>
+  )
 }
-export default FlowComponent

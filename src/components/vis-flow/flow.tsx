@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import ReactFlow, {
   addEdge,
   Node,
@@ -10,16 +10,53 @@ import ReactFlow, {
   OnNodesChange,
   OnEdgesChange,
   OnConnect,
-  MiniMap,
   Controls,
-  Background
+  Background,
 } from 'reactflow'
 
 import 'reactflow/dist/style.css'
 
+// --- DF-QuAD helper ------------------------------------------------
+interface Argument {
+  id: string
+  label: string
+  tau: number // intrinsic base score
+  attackers?: string[]
+  supporters?: string[]
+}
+
+function computeDfQuad(args: Argument[]) {
+  const sigma: Record<string, number> = {}
+  args.forEach(a => (sigma[a.id] = a.tau))
+
+  const F = (vals: number[]) =>
+    vals.length === 0 ? 0 : 1 - vals.reduce((p, v) => p * Math.abs(1 - v), 1)
+
+  const C = (v0: number, va: number, vs: number) => {
+    if (va === vs) return v0
+    if (va > vs) return v0 - v0 * Math.abs(vs - va)
+    return v0 + (1 - v0) * Math.abs(vs - va)
+  }
+
+  for (let iter = 0; iter < 10; iter++) {
+    let delta = 0
+    for (const a of args) {
+      const va = F((a.attackers ?? []).map(id => sigma[id]))
+      const vs = F((a.supporters ?? []).map(id => sigma[id]))
+      const newVal = C(a.tau, va, vs)
+      delta = Math.max(delta, Math.abs(newVal - sigma[a.id]))
+      sigma[a.id] = newVal
+    }
+    if (delta < 1e-4) break
+  }
+  return sigma
+}
+
+// -------------------------------------------------------------------
+
 export default function FlowTest({
   nodes: initNodes,
-  edges: initEdges
+  edges: initEdges,
 }: {
   nodes: Node[]
   edges: Edge[]
@@ -28,62 +65,117 @@ export default function FlowTest({
   const [edges, setEdges] = useState<Edge[]>(initEdges)
 
   const onNodesChange: OnNodesChange = useCallback(
-    chs => {
-      setNodes(nds => applyNodeChanges(chs, nds))
-    },
-    [setNodes]
+    changes => setNodes(nds => applyNodeChanges(changes, nds)),
+    []
   )
 
   const onEdgesChange: OnEdgesChange = useCallback(
-    chs => {
-      setEdges(eds => applyEdgeChanges(chs, eds))
-    },
-    [setEdges]
+    changes => setEdges(eds => applyEdgeChanges(changes, eds)),
+    []
   )
 
   const onConnect: OnConnect = useCallback(
     params => setEdges(eds => addEdge(params, eds)),
-    [setEdges]
+    []
   )
-  const proOptions = { hideAttribution: true }
-  const minimapStyle = {
-    background: '#192633',
-    border: '1px solid #192633',
-    borderRadius: '4px',
 
-    opacity: 0.8
-  }
+  // --- demo ArgLLM simulation -------------------------------------
+  useEffect(() => {
+    const demoArgs: Argument[] = [
+      {
+        id: 'claim',
+        label: 'Dupilumab treats asthma',
+        tau: 0.5,
+        attackers: ['a1'],
+        supporters: ['a2'],
+      },
+      {
+        id: 'a1',
+        label: 'Limited clinical trials',
+        tau: 0.3,
+        attackers: [],
+        supporters: [],
+      },
+      {
+        id: 'a2',
+        label: 'FDA approval evidence',
+        tau: 0.8,
+        attackers: [],
+        supporters: [],
+      },
+    ]
 
-  // console.log("nodes to display", nodes)
+    const sigma = computeDfQuad(demoArgs)
+
+    const n: Node[] = demoArgs.map((a, i) => ({
+      id: a.id,
+      data: {
+        label: `${a.label}\nσ=${sigma[a.id].toFixed(2)}`,
+      },
+      position:
+        i === 0
+          ? { x: 250, y: 50 }
+          : { x: 100 + i * 200, y: 250 }, // simple layout
+      style: {
+        background: `rgba(120, 200, 120, ${
+          0.4 + sigma[a.id] * 0.6
+        })`,
+        border: `2px solid ${
+          sigma[a.id] > 0.5 ? 'green' : 'red'
+        }`,
+        borderRadius: 12,
+        padding: 8,
+        color: '#111',
+        fontWeight: 500,
+        whiteSpace: 'pre-line',
+        transition: 'all 0.5s ease',
+      },
+    }))
+
+    const e: Edge[] = [
+      {
+        id: 'a1-claim',
+        source: 'a1',
+        target: 'claim',
+        label: 'attack',
+        animated: true,
+        style: { stroke: 'red' },
+      },
+      {
+        id: 'a2-claim',
+        source: 'a2',
+        target: 'claim',
+        label: 'support',
+        animated: true,
+        style: { stroke: 'green' },
+      },
+    ]
+
+    setNodes(n)
+    setEdges(e)
+  }, [])
+  // ---------------------------------------------------------------
 
   return (
-    <div className="relative" style={{ width: '400px', height: '500px' }}>
-      {' '}
-      {/* Adjust width and height as needed */}
+    <div
+      className="relative fade-in"
+      style={{
+        width: '100%',
+        height: '550px',
+        animation: 'fadeInSmooth 0.8s ease forwards',
+      }}
+    >
       <ReactFlow
         nodes={nodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
-        proOptions={proOptions}
         fitView
       >
         <Background color="#aaa" gap={16} />
-      </ReactFlow>
-      <div
-        className="absolute top-9 left-10"
-        style={{ width: '100px', height: '50px' }}
-      >
-        {' '}
-        {/* Position and size for MiniMap */}
-        {/* <MiniMap style={minimapStyle} zoomable pannable /> */}
-      </div>
-      <div className="absolute bottom-0 left-0">
-        {' '}
-        {/* Position for Controls */}
         <Controls />
-      </div>
+      </ReactFlow>
     </div>
   )
 }
