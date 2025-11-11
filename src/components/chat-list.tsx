@@ -86,9 +86,9 @@ export function ChatList({
           {words.slice(0, visibleCount).map((word, i) => (
             <span
               key={i}
-              className="inline-block opacity-0 animate-[fadeIn_0.4s_ease_forwards]"
+              className="inline-block opacity-0 animate-[fadeInUp_0.45s_ease_forwards]"
               style={{
-                animationDelay: `${i * 40}ms`,
+                animationDelay: `${i * 35}ms`,
                 whiteSpace: 'pre'
               }}
             >
@@ -118,7 +118,7 @@ export function ChatList({
     );
   };
 
-  // --- token visualization with beige style + hover tooltip ---
+  // --- token visualization with smooth fade/slide animation + hover tooltip ---
   const RenderTokenDemo = ({ data }: { data: any }) => {
     const [visibleCount, setVisibleCount] = useState(0);
     const [hoveredToken, setHoveredToken] = useState<{ word: string; score: number } | null>(null);
@@ -141,8 +141,8 @@ export function ChatList({
     const handleMouseMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
       const rect = e.currentTarget.getBoundingClientRect();
       setMousePos({
-        x: e.clientX - rect.left + 12, // 12px right of cursor within container
-        y: e.clientY - rect.top - 30   // slightly above cursor
+        x: e.clientX - rect.left + 12,
+        y: e.clientY - rect.top - 30
       });
     };
 
@@ -153,8 +153,6 @@ export function ChatList({
       >
         {data.tokens.slice(0, visibleCount).map((t: any, i: number) => {
           const highlight = t.score >= 0.8;
-
-          // Normalize for high-range contrast
           const normScore = (t.score - 0.8) / 0.2;
           const intensity = Math.min(Math.max(normScore, 0), 1);
           const base = [216, 180, 132];
@@ -176,16 +174,25 @@ export function ChatList({
                 border: highlight ? '0.5px solid rgba(0,0,0,0.08)' : 'none',
                 color: highlight ? (t.score > 0.9 ? '#fff' : '#222') : '#222',
                 marginRight: '2px',
-                transition: 'all 0.3s ease',
                 cursor: highlight ? 'pointer' : 'default',
+                whiteSpace: 'pre',
               }}
-              className="hover:scale-[1.05]"
+              className="opacity-0 animate-[fadeInUp_0.4s_ease_forwards] hover:scale-[1.05]"
+              style={{
+                animationDelay: `${i * 25}ms`,
+                backgroundColor: color,
+                borderRadius: '3px',
+                border: highlight ? '0.5px solid rgba(0,0,0,0.08)' : 'none',
+                color: highlight ? (t.score > 0.9 ? '#fff' : '#222') : '#222',
+                padding: highlight ? '1px 3px' : '1px 2px',
+                marginRight: '2px',
+                transition: 'all 0.3s ease',
+              }}
             >
               {t.word}
             </span>
           );
         })}
-
 
         {hoveredToken && (
           <div

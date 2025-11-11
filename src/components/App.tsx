@@ -18,7 +18,6 @@ import { useAtom } from 'jotai';
 import { viewModeAtom } from '../lib/state.ts';
 import FlowComponent from './vis-flow/index.tsx';
 import { Button } from './ui/button.tsx';
-import { IconRefresh, IconStop } from './ui/icons.tsx';
 import 'reactflow/dist/style.css';
 import { loadPhi3 } from './model/model.ts';
 import {
@@ -110,17 +109,18 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
     if (userText === '__demo_dupilumab__') {
       console.log('🧪 DEMO branch triggered');
 
-      const demoQuestion = "Did Dupilumab receive FDA approval for Asthma before Chronic Rhinosinusitis?";
+      const demoQuestion =
+        'Did Dupilumab receive FDA approval for Asthma before Chronic Rhinosinusitis?';
       const demoParagraph =
-        "Dupilumab was approved by the FDA for Chronic Rhinosinusitis with Nasal Polyps on June 26, 2019. It was later approved for Asthma on October 20, 2022.";
+        'Dupilumab was approved by the FDA for Chronic Rhinosinusitis with Nasal Polyps on June 26, 2019. It was later approved for Asthma on October 20, 2022.';
 
       const fakeTokenUncertainty = [
-        { word: 'Dupilumab', score: 0.80 },  // highlight
+        { word: 'Dupilumab', score: 0.8 },
         { word: 'was', score: 0.1 },
         { word: 'approved', score: 0.3 },
         { word: 'by', score: 0.1 },
         { word: 'the', score: 0.05 },
-        { word: 'FDA', score: 0.9 },         // highlight
+        { word: 'FDA', score: 0.9 },
         { word: 'for', score: 0.15 },
         { word: 'Chronic', score: 0.4 },
         { word: 'Rhinosinusitis', score: 0.45 },
@@ -136,11 +136,11 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
         { word: 'later', score: 0.2 },
         { word: 'approved', score: 0.25 },
         { word: 'for', score: 0.15 },
-        { word: 'Asthma', score: 0.97 },     // highlight
+        { word: 'Asthma', score: 0.97 },
         { word: 'on', score: 0.15 },
         { word: 'October', score: 0.1 },
         { word: '20,', score: 0.1 },
-        { word: '2022.', score: 0.05 }
+        { word: '2022.', score: 0.05 },
       ];
 
       const demoAssistant: Message = {
@@ -150,17 +150,17 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
           type: 'demo',
           paragraph: demoParagraph,
           overall_confidence: 0.76,
-          tokens: fakeTokenUncertainty
-        })
+          tokens: fakeTokenUncertainty,
+        }),
       };
 
       console.log('🧩 demoAssistant created:', demoAssistant);
 
-      setMessages(prev => {
+      setMessages((prev) => {
         const newMessages = [
           ...prev,
           { id: crypto.randomUUID(), role: 'user', content: demoQuestion },
-          demoAssistant
+          demoAssistant,
         ];
         console.log('✅ Setting messages to:', newMessages);
         return newMessages;
@@ -179,25 +179,25 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
     const newUser: Message = {
       id: crypto.randomUUID(),
       role: 'user',
-      content: userText
+      content: userText,
     };
-    setMessages(prev => [...prev, newUser]);
+    setMessages((prev) => [...prev, newUser]);
 
     const newAssistant: Message = {
       id: crypto.randomUUID(),
       role: 'assistant',
-      content: 'Generating answer…'
+      content: 'Generating answer…',
     };
-    setMessages(prev => [...prev, newAssistant]);
+    setMessages((prev) => [...prev, newAssistant]);
 
     try {
       console.log('⚙️ Calling Phi-3 model...');
       const res = await phi3(`Answer the question: ${userText}`, {
-        max_new_tokens: 400
+        max_new_tokens: 400,
       });
       console.log('✅ Phi-3 response:', res);
-      setMessages(prev =>
-        prev.map(m =>
+      setMessages((prev) =>
+        prev.map((m) =>
           m.id === newAssistant.id ? { ...m, content: res } : m
         )
       );
@@ -208,20 +208,6 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
       setIsLoading(false);
     }
   };
-
-  const StopRegenerateButton = isLoading ? (
-    <Button variant="outline" onClick={() => setIsLoading(false)} className="mx-auto mt-4 flex">
-      <IconStop className="mr-2" /> Stop
-    </Button>
-  ) : (
-    <Button
-      variant="outline"
-      onClick={() => append(messages[messages.length - 2]?.content || '')}
-      className="mx-auto mt-4 flex"
-    >
-      <IconRefresh className="mr-2" /> Regenerate
-    </Button>
-  );
 
   const updateLayout = useCallback(() => {
     const { nodes: n, edges: e } = getLayoutedElements(
@@ -255,24 +241,25 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
                 </Button>
               </div>
 
+              {/* --- Paragraph Mode --- */}
               {viewMode === 'paragraph' && (
-                <div className="pt-4 md:pt-10 flex justify-center">
+                <div className="pt-4 md:pt-10 flex justify-center fade-in">
                   <div className="max-w-2xl w-full text-center">
                     <ChatList
-                      key={messages.map(m => m.id).join('|')}
+                      key={messages.map((m) => m.id).join('|')}
                       messages={messages}
                       activeStep={0}
                       nodes={nodes}
                       edges={edges}
                     />
-                    {StopRegenerateButton}
                     <ChatScrollAnchor trackVisibility={isLoading} />
                   </div>
                 </div>
               )}
 
+              {/* --- Relation Mode --- */}
               {viewMode === 'relation' && (
-                <div className="pt-4 md:pt-10">
+                <div className="pt-4 md:pt-10 fade-in">
                   <ReactFlowProvider>
                     <FlowComponent
                       nodes={nodes}
@@ -290,17 +277,17 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
                 </div>
               )}
 
+              {/* --- Token Mode --- */}
               {viewMode === 'token' && (
-                <div className="pt-4 md:pt-10 flex justify-center">
+                <div className="pt-4 md:pt-10 flex justify-center fade-in">
                   <div className="max-w-2xl w-full text-center">
                     <ChatList
-                      key={messages.map(m => m.id).join('|')}
+                      key={messages.map((m) => m.id).join('|')}
                       messages={messages}
                       activeStep={0}
                       nodes={nodes}
                       edges={edges}
                     />
-                    {StopRegenerateButton}
                     <ChatScrollAnchor trackVisibility={isLoading} />
                   </div>
                 </div>
