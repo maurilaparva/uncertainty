@@ -2,11 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { UseChatHelpers } from 'ai/react';
 import { Button } from './ui/button.tsx';
 import { IconArrowRight } from './ui/icons.tsx';
+import { useAtom } from 'jotai';
+import { viewModeAtom } from '../lib/state.ts';
 
 type EmptyScreenProps = Pick<UseChatHelpers, 'setInput' | 'append'> & {
   id: string;
   initialOpen?: boolean;
-  isModelLoaded?: boolean; // ✅ indicates Phi-3 load status
+  isModelLoaded?: boolean;
 };
 
 const exampleMessages = [
@@ -48,10 +50,9 @@ export function EmptyScreen({
   append,
   isModelLoaded = false
 }: EmptyScreenProps) {
-  const [showAll, setShowAll] = useState(false);
   const [dots, setDots] = useState('');
+  const [viewMode, setViewMode] = useAtom(viewModeAtom);
 
-  // simple animated dots (...)
   useEffect(() => {
     if (!isModelLoaded) {
       const interval = setInterval(() => {
@@ -61,10 +62,9 @@ export function EmptyScreen({
     }
   }, [isModelLoaded]);
 
-  // --- ⏳ Show loading screen until model is ready ---
   if (!isModelLoaded) {
     return (
-      <div className="flex items-center justify-center h-screen bg-white transition-opacity duration-500">
+      <div className="flex items-center justify-center h-screen bg-white">
         <h1 className="text-xl font-semibold text-gray-700 animate-pulse">
           Model loading{dots}
         </h1>
@@ -72,61 +72,55 @@ export function EmptyScreen({
     );
   }
 
-  // --- Once loaded, show the normal intro screen ---
-  const visibleExamples = showAll ? exampleMessages : exampleMessages.slice(0, 3);
-
   return (
-    <div className="mx-auto max-w-2xl px-4 fade-in">
-      <div className="flex flex-col gap-2 rounded-lg border bg-background p-8 shadow-sm transition-all duration-500">
+    <div className="mx-auto max-w-3xl px-4 fade-in">
+      <div className="flex flex-col gap-3 rounded-lg border bg-background p-8 shadow-sm">
         <h1 className="text-lg font-semibold">Uncertainty Visualization</h1>
 
-        <p className="mb-2 leading-normal text-muted-foreground">
-          This prototype investigates how large language models express and quantify uncertainty in
-          biomedical question answering. It visualizes paragraph-level, claim-level, and token-level confidence derived from
-          model outputs to help users interpret factual reliability and reasoning consistency.
-          <br />
-          The example questions below are adapted from the FAccT ’24 study <em>“I’m Not Sure, But…”</em>.
+        {/* 🔘 Visualization Mode Toggle */}
+        <div className="flex items-center space-x-3 my-2">
+          <span className="text-sm text-muted-foreground">Visualization Mode:</span>
+          <select
+            value={viewMode}
+            onChange={(e) => setViewMode(e.target.value as any)}
+            className="border rounded-md px-2 py-1 text-sm"
+          >
+            <option value="paragraph">Paragraph-Level</option>
+            <option value="relation">Relation-Level</option>
+            <option value="token">Token-Level</option>
+          </select>
+        </div>
+
+        <p className="text-sm text-muted-foreground mb-3">
+          Choose one mode to explore uncertainty visualization:
+          <br />• <strong>Paragraph</strong> — overall + per-paragraph confidence
+          <br />• <strong>Relation</strong> — uncertainty across knowledge-graph edges
+          <br />• <strong>Token</strong> — per-word highlight of high uncertainty (≥ 0.8)
         </p>
 
         <hr className="my-3 border-border" />
 
-        <h2 className="text-sm font-semibold text-muted-foreground mb-1">
-          FAccT ’24 Medical Claim Questions
+        <h2 className="text-base font-semibold mt-2 mb-1">
+          FAccT ’24 Benchmark Questions (E.1–E.8)
         </h2>
+        <p className="text-sm text-muted-foreground mb-2">
+          These correspond to the uncertainty-expression test cases from “Examining the Impact of
+          Large Language Models’ Uncertainty Expression on User Reliance and Trust” FAccT 2024.
+        </p>
 
-        <div className="mt-2 flex flex-col items-start space-y-1">
-          {visibleExamples.map((message, index) => (
+        <div className="flex flex-col items-start space-y-1">
+          {exampleMessages.map((message, index) => (
             <Button
               key={index}
               variant="link"
               className="h-auto p-0 text-base hover:underline text-left"
-              onClick={() => {
-                if (!isModelLoaded) {
-                  alert('Model is still loading, please wait...');
-                  return;
-                }
-                append(message.message); // ✅ directly trigger model with question
-              }}
+              onClick={() => append(message.message)}
             >
               <IconArrowRight className="mr-2 text-muted-foreground" />
               {message.heading}
             </Button>
           ))}
-
-          <button
-            onClick={() => setShowAll(!showAll)}
-            className="text-xs text-muted-foreground mt-2 hover:underline"
-          >
-            {showAll ? 'Show fewer questions' : 'Show all 8 questions'}
-          </button>
         </div>
-
-        <hr className="my-4 border-border" />
-
-        <p className="leading-normal text-muted-foreground">
-          You can also start a custom conversation about a medical entity or supplement and explore
-          its claims, evidence, and uncertainty.
-        </p>
       </div>
     </div>
   );
