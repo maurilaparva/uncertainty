@@ -362,11 +362,17 @@ const getEdgeRelationBase = (e: any) => {
 export function Chat({ id, initialMessages }: ChatProps) {
   const [phi3, setPhi3] = useState<any | null>(null);
   useEffect(() => {
+    let isMounted = true;
     (async () => {
+      console.log("⏳ Initializing Phi-3 model...");
       const model = await loadPhi3();
-      setPhi3(model);
-      console.log('✅ Phi3 model loaded');
+      if (isMounted) {
+        // ✅ Ensure we store the *inference function*, not a Promise
+        setPhi3(() => model);
+        console.log("✅ Phi-3 model fully loaded and ready");
+      }
     })();
+    return () => { isMounted = false; };
   }, []);
 
   const lastEntityCategoriesRef = useRef<Record<string, string>>({});
@@ -616,8 +622,18 @@ Use the above examples only as a guide for format and structure. Do not reuse th
   };
 
     const append = async (msg: Partial<Message> | string) => {
-    const userContent = typeof msg === 'string' ? msg : (msg.content || '');
-    if (!userContent.trim()) return;
+      
+    if (!phi3 || typeof phi3 !== "function") {
+      toast.error("⚠️ Model not ready yet — please wait a few seconds.");
+      console.warn("append() called before phi3 was ready:", phi3);
+      return;
+    }
+
+    const userContent = typeof msg === "string" ? msg : (msg.content || "");
+    if (!userContent?.trim()) {
+      console.warn("append() called with empty or null message:", msg);
+      return;
+    }
 
     const userMsg: Msg = {
       id: crypto.randomUUID(),
@@ -651,9 +667,7 @@ You are a biomedical assistant.
 Answer the user’s question in 1–3 paragraphs.
 
 After your answer, append:
-|| CONF:{"overall":<0–100 integer>,
-          "per_paragraph":[<0–100 ints per paragraph>],
-          "verbal":"I'm <short self-confidence sentence>"}.
+|| CONF:{"overall":90,"per_paragraph":[90,85],"verbal":"I'm fairly confident overall."}.
 
 Example:
 Main response text here...
@@ -665,19 +679,42 @@ Main response text here...
       const result = await phi3(fullPrompt, { max_new_tokens: 400 });
       console.log('🧠 Mistral output:', result);
 
-      // Split on your delimiter and extract parts
-      const parts = result.split('||');
-      const mainText = (parts[0] || '').trim();
-      const rawConf = (parts[1] || '').trim();
+     // --- Extract only the main biomedical answer text ---
+      let mainText = result;
 
-      let conf: { overall?: number; per_paragraph?: number[]; verbal?: string } | undefined;
-      if (rawConf.startsWith('CONF:')) {
-        try {
-          conf = JSON.parse(rawConf.slice(5));
-        } catch (err) {
-          console.warn('⚠️ Failed to parse CONF JSON', err);
+      // Case 1: capture everything after "===" and before the first CONF
+      const mainMatch = result.match(/===([\s\S]*?)\|\|\s*CONF:/);
+      if (mainMatch) {
+        mainText = mainMatch[1].trim();
+      } else {
+        // Case 2: fallback – capture everything after "User question:" and before CONF
+        const fallback = result.match(/User question:[\s\S]*?\n([\s\S]*?)\|\|\s*CONF:/i);
+        if (fallback) {
+          mainText = fallback[1].trim();
+        } else {
+          // Case 3: last resort – everything before final CONF
+          const confIndex = result.lastIndexOf("|| CONF:");
+          if (confIndex > 0) mainText = result.slice(0, confIndex).trim();
         }
       }
+
+      // --- Extract CONF JSON safely ---
+      let conf: { overall?: number; per_paragraph?: number[]; verbal?: string } | undefined;
+      const confMatch = result.match(/\|\|\s*CONF:(\{[\s\S]*?\})/i);
+      if (confMatch) {
+        try {
+          conf = JSON.parse(confMatch[1]);
+        } catch (err) {
+          console.warn('⚠️ Failed to parse CONF JSON', err);
+          const cleaned = confMatch[1].replace(/[^\d,\[\]\{\}:\"A-Za-z%\s]/g, '');
+          try { conf = JSON.parse(cleaned); } catch {}
+        }
+      }
+
+      // ✅ Add verification logs here:
+      console.log("🧩 mainText preview:", mainText.slice(0, 200));
+      console.log("📊 conf parsed:", conf);
+
 
       // Annotate paragraphs with per-paragraph self-confidence
       let finalText = mainText;
