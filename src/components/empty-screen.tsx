@@ -13,8 +13,8 @@ type EmptyScreenProps = Pick<UseChatHelpers, 'setInput' | 'append'> & {
 
 const exampleMessages = [
   {
-    heading: 'Did Dupilumab receive FDA approval for Asthma before Chronic Rhinosinusitis?',
-    message: 'Did Dupilumab receive FDA approval for Asthma before Chronic Rhinosinusitis?'
+    heading: 'Did Dupilumab receive FDA approval for Asthma before Chronic Rhinosinusitis? (Demo)',
+    message: '__demo_dupilumab__'
   },
   {
     heading: 'Is there more antihistamine in Benadryl than Rhinocort?',
@@ -114,7 +114,16 @@ export function EmptyScreen({
               key={index}
               variant="link"
               className="h-auto p-0 text-base hover:underline text-left"
-              onClick={() => append(message.message)}
+              onClick={() => {
+                // 🔧 Handle demo question explicitly
+                if (message.message === "__demo_dupilumab__") {
+                  console.log("🧭 Demo trigger fired");
+                  append("__demo_dupilumab__");
+                } else {
+                  console.log("Clicked message:", message.message);
+                  append(message.message);
+                }
+              }}
             >
               <IconArrowRight className="mr-2 text-muted-foreground" />
               {message.heading}

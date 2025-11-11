@@ -5,30 +5,21 @@ import { ChatMessage } from './chat-message'
 import { CustomGraphNode, CustomGraphEdge } from '../lib/types'
 import React from 'react'
 
-// Remove trailing keywords FIRST, then inline categories.
-// Handles: "|| [ ... ]", "| [ ... ]", and ", "a", "b", ...]" tails.
 const stripCategories = (s: string) =>
   s
-    // 1) kill trailing keywords blocks
     .replace(/\s*\|\|\s*\[[\s\S]*$|\s*\|\s*\[[\s\S]*$/g, '')
-    // 2) fallback: kill a trailing comma+quoted list even if "[" was lost
     .replace(/\s*,\s*"(?:[^"\\]|\\.)+"\s*(?:,\s*"(?:[^"\\]|\\.)+"\s*)*\]?$/g, '')
-    // 3) remove inline |Category but NOT the start of a keywords block
     .replace(/\|(?!\s*\[)[^,.;:\n)\]]+/g, '')
-    .trim();
+    .trim()
 
 export interface ChatListProps {
   messages: Message[]
   activeStep: number
   nodes: CustomGraphNode[]
   edges: CustomGraphEdge[]
-  clickedNode: any
+  clickedNode?: any
 }
 
-/**
- * Build a fast lookup from lowercased node label -> node background color.
- * Prefers node.data.bgColor, falls back to node.style.background.
- */
 function useLabelToColorMap(nodes: CustomGraphNode[]) {
   return React.useMemo(() => {
     const m = new Map<string, string>()
@@ -52,52 +43,59 @@ export function ChatList({
   edges,
   clickedNode
 }: ChatListProps) {
-  const { isPaneView } = useViewMode()
+  const { viewMode } = useViewMode()
   const labelToColor = useLabelToColorMap(nodes)
 
-  if (!messages.length) {
-    return null
+  if (!messages.length) return null
+
+  const parseDemo = (msg: any) => {
+    try {
+      const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg
+      return parsed?.type === 'demo' ? parsed : null
+    } catch {
+      return null
+    }
   }
 
   return (
     <div className="relative mx-auto px-14">
-      {isPaneView ? (
-        <>
-          {messages
-            .slice(activeStep * 2, activeStep * 2 + 2)
-            .map((message, index) => (
-              <ChatMessage
-                key={index}
-                // For assistant messages: strip trailing JSON/keywords block before render
-                message={message.role === 'assistant'
-                  ? { ...message, content: stripCategories(message.content) }
-                  : message}
-                // Only pass nodes/edges to assistant messages (as before)
-                nodes={message.role === 'user' ? [] : nodes}
-                edges={message.role === 'user' ? [] : edges}
-                clickedNode={clickedNode}
-                // NEW: provide node-colors so ChatMessage can color chat highlights to match nodes
-                labelToColor={labelToColor}
-              />
-            ))}
-        </>
-      ) : (
-        <>
-          {messages.map((message, index) => (
-            <ChatMessage
-              key={index}
-              message={message.role === 'assistant'
+      {messages.map((message, index) => {
+        const demoData =
+          message.role === 'assistant' ? parseDemo(message.content) : null
+
+        // ✅ DEMO: show the answer paragraph and confidence directly
+        if (demoData) {
+          return (
+            <div key={index} className="my-6 text-left">
+              {/* the answer text itself */}
+              <p className="text-lg leading-relaxed text-gray-800">
+                {demoData.paragraph}
+              </p>
+
+              {/* the confidence line */}
+              <p className="text-sm text-gray-600 mt-2">
+                Model confidence: {(demoData.overall_confidence * 100).toFixed(1)}%
+              </p>
+            </div>
+          )
+        }
+
+        // Normal messages
+        return (
+          <ChatMessage
+            key={index}
+            message={
+              message.role === 'assistant'
                 ? { ...message, content: stripCategories(message.content) }
-                : message}
-              nodes={message.role === 'user' ? [] : nodes}
-              edges={message.role === 'user' ? [] : edges}
-              clickedNode={clickedNode}
-              // NEW
-              labelToColor={labelToColor}
-            />
-          ))}
-        </>
-      )}
+                : message
+            }
+            nodes={message.role === 'user' ? [] : nodes}
+            edges={message.role === 'user' ? [] : edges}
+            clickedNode={clickedNode}
+            labelToColor={labelToColor}
+          />
+        )
+      })}
     </div>
   )
 }
