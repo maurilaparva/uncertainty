@@ -6,7 +6,6 @@ import ReactFlow, {
   applyEdgeChanges,
   applyNodeChanges,
   Background,
-  Controls,
   Edge,
   Node,
   OnConnect,
@@ -58,7 +57,6 @@ function computeDfQuad(args: Argument[]) {
 // Main visualization component
 // ------------------------------
 export default function FlowComponent() {
-  console.log("✅ DF-QUAD FlowComponent loaded successfully");
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
 
@@ -66,12 +64,10 @@ export default function FlowComponent() {
     chs => setNodes(nds => applyNodeChanges(chs, nds)),
     []
   )
-
   const onEdgesChange: OnEdgesChange = useCallback(
     chs => setEdges(eds => applyEdgeChanges(chs, eds)),
     []
   )
-
   const onConnect: OnConnect = useCallback(
     params => setEdges(eds => addEdge(params, eds)),
     []
@@ -105,26 +101,55 @@ export default function FlowComponent() {
 
     const sigma = computeDfQuad(demoArgs)
 
-    const n: Node[] = demoArgs.map((a, i) => ({
-      id: a.id,
-      data: {
-        label: `${a.label}\nσ=${sigma[a.id].toFixed(2)}`,
+    // Layout positions
+    const n: Node[] = [
+      {
+        id: 'claim',
+        data: { label: `${demoArgs[0].label}\nσ=${sigma['claim'].toFixed(2)}` },
+        position: { x: 300, y: 50 },
+        sourcePosition: 'bottom', // ✅ outgoing edges go downward
+        style: {
+          background: `rgba(230, 215, 180, ${0.4 + sigma['claim'] * 0.6})`,
+          border: `2px solid ${sigma['claim'] > 0.5 ? '#4e944f' : '#c43e3e'}`,
+          borderRadius: 12,
+          padding: 10,
+          textAlign: 'center',
+          fontWeight: 500,
+          whiteSpace: 'pre-line',
+          transition: 'all 0.6s ease',
+        },
       },
-      position:
-        i === 0
-          ? { x: 250, y: 50 }
-          : { x: 100 + i * 200, y: 250 },
-      style: {
-        background: `rgba(230, 215, 180, ${0.4 + sigma[a.id] * 0.6})`,
-        border: `2px solid ${sigma[a.id] > 0.5 ? '#4e944f' : '#c43e3e'}`,
-        borderRadius: 12,
-        padding: 8,
-        color: '#222',
-        fontWeight: 500,
-        whiteSpace: 'pre-line',
-        transition: 'all 0.6s ease',
+      {
+        id: 'a1',
+        data: { label: `${demoArgs[1].label}\nσ=${sigma['a1'].toFixed(2)}` },
+        position: { x: 150, y: 300 },
+        targetPosition: 'top', // ✅ connect upward to claim
+        style: {
+          background: `rgba(230, 215, 180, ${0.4 + sigma['a1'] * 0.6})`,
+          border: '2px solid #c43e3e',
+          borderRadius: 12,
+          padding: 10,
+          textAlign: 'center',
+          fontWeight: 500,
+          whiteSpace: 'pre-line',
+        },
       },
-    }))
+      {
+        id: 'a2',
+        data: { label: `${demoArgs[2].label}\nσ=${sigma['a2'].toFixed(2)}` },
+        position: { x: 450, y: 300 },
+        targetPosition: 'top', // ✅ connect upward to claim
+        style: {
+          background: `rgba(230, 215, 180, ${0.4 + sigma['a2'] * 0.6})`,
+          border: '2px solid #4e944f',
+          borderRadius: 12,
+          padding: 10,
+          textAlign: 'center',
+          fontWeight: 500,
+          whiteSpace: 'pre-line',
+        },
+      },
+    ]
 
     const e: Edge[] = [
       {
@@ -156,6 +181,10 @@ export default function FlowComponent() {
       style={{
         width: '100%',
         height: '550px',
+        border: '1px solid rgba(0,0,0,0.15)', // ✅ subtle outline
+        borderRadius: '10px',
+        boxShadow: '0 2px 6px rgba(0,0,0,0.05)', // ✅ soft shadow
+        backgroundColor: '#fafafa',
         animation: 'fadeInSmooth 0.8s ease forwards',
       }}
     >
@@ -166,9 +195,17 @@ export default function FlowComponent() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         fitView
+        proOptions={{ hideAttribution: true }} // ✅ removes “React Flow” watermark
+        zoomOnScroll={false} // ✅ disable zoom UI
+        zoomOnPinch={false}
+        panOnScroll={false}
+        zoomOnDoubleClick={false}
+        nodesDraggable={false}
+        nodesConnectable={false}
+        elementsSelectable={false}
       >
-        <Background color="#bbb" gap={16} />
-        <Controls />
+        <Background color="#ddd" gap={16} />
+        {/* ✅ Removed Controls component so no +/– buttons appear */}
       </ReactFlow>
     </div>
   )
