@@ -48,39 +48,87 @@ export function ChatList({
 
   if (!messages.length) return null
 
+  // --- helper to parse demo content ---
   const parseDemo = (msg: any) => {
     try {
       const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg
-      return parsed?.type === 'demo' ? parsed : null
-    } catch {
+      if (parsed?.type === 'demo') {
+        console.log('✅ parseDemo success:', parsed)
+        return parsed
+      }
+      return null
+    } catch (err) {
+      console.warn('⚠️ parseDemo JSON error:', msg)
       return null
     }
   }
 
+  // --- paragraph visualization ---
+  const renderParagraphDemo = (data: any) => (
+    <div className="mt-4 text-left">
+      <p className="text-lg leading-relaxed text-gray-800">{data.paragraph}</p>
+      <div className="mt-4 w-full bg-gray-200 rounded-full h-3">
+        <div
+          className="bg-blue-500 h-3 rounded-full transition-all duration-500"
+          style={{ width: `${data.overall_confidence * 100}%` }}
+        />
+      </div>
+      <p className="text-sm text-gray-600 mt-1">
+        Confidence: {(data.overall_confidence * 100).toFixed(1)}%
+      </p>
+    </div>
+  )
+
+  // --- token visualization ---
+  const renderTokenDemo = (data: any) => (
+    <div className="mt-4 text-left flex flex-wrap gap-1 justify-start leading-relaxed">
+      {data.tokens.map((t: any, i: number) => {
+        const color = `rgba(255, 0, 0, ${t.score})`
+        return (
+          <span
+            key={i}
+            title={`Uncertainty: ${(t.score * 100).toFixed(1)}%`}
+            style={{
+              backgroundColor: color,
+              padding: '2px 4px',
+              borderRadius: '4px',
+              color: t.score > 0.4 ? 'white' : 'black',
+              marginRight: '2px',
+              whiteSpace: 'pre-wrap'
+            }}
+          >
+            {t.word}
+          </span>
+        )
+      })}
+      <p className="text-xs text-gray-500 mt-3">🔴 darker = higher uncertainty</p>
+    </div>
+  )
+
   return (
     <div className="relative mx-auto px-14">
       {messages.map((message, index) => {
-        const demoData =
-          message.role === 'assistant' ? parseDemo(message.content) : null
+        const isAssistant = message.role === 'assistant'
+        const demoData = isAssistant ? parseDemo(message.content) : null
 
-        // ✅ DEMO: show the answer paragraph and confidence directly
-        if (demoData) {
+        console.log(`🧾 Rendering [${index}]`, { role: message.role, viewMode, demoData })
+
+        if (isAssistant && demoData) {
           return (
             <div key={index} className="my-6 text-left">
-              {/* the answer text itself */}
-              <p className="text-lg leading-relaxed text-gray-800">
-                {demoData.paragraph}
-              </p>
-
-              {/* the confidence line */}
-              <p className="text-sm text-gray-600 mt-2">
-                Model confidence: {(demoData.overall_confidence * 100).toFixed(1)}%
-              </p>
+              {viewMode === 'paragraph' && renderParagraphDemo(demoData)}
+              {viewMode === 'token' && renderTokenDemo(demoData)}
+              {/* Safety fallback — show text if neither mode matched */}
+              {(!viewMode || (viewMode !== 'paragraph' && viewMode !== 'token')) && (
+                <p className="text-gray-600 italic mt-2">
+                  [No visualization mode active — showing raw text:] {demoData.paragraph}
+                </p>
+              )}
             </div>
           )
         }
 
-        // Normal messages
+        // Fallback for user and normal messages
         return (
           <ChatMessage
             key={index}

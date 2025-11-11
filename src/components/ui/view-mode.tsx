@@ -1,33 +1,17 @@
-'use client'
-import { createContext, useState, useContext, ReactNode } from 'react'
-
-interface ViewModeContextProps {
-  isPaneView: boolean
-  toggleViewMode: () => void
-}
-
-const ViewModeContext = createContext<ViewModeContextProps | undefined>(
-  undefined
-)
+'use client';
+import { ReactNode } from 'react';
+import { useAtom } from 'jotai';
+import { Provider as JotaiProvider } from 'jotai';
+import { viewModeAtom } from '../../lib/state'; // adjust path if needed
 
 export function useViewMode() {
-  const context = useContext(ViewModeContext)
-  if (!context) {
-    throw new Error('useViewMode must be used within a ViewModeProvider')
-  }
-  return context
+  const [viewMode, setViewMode] = useAtom(viewModeAtom);
+  return {
+    viewMode,
+    setViewMode,
+  };
 }
 
 export function ViewModeProvider({ children }: { children: ReactNode }) {
-  const [isPaneView, setIsPaneView] = useState(true)
-
-  const toggleViewMode = () => {
-    setIsPaneView(!isPaneView)
-  }
-
-  return (
-    <ViewModeContext.Provider value={{ isPaneView, toggleViewMode }}>
-      {children}
-    </ViewModeContext.Provider>
-  )
+  return <JotaiProvider>{children}</JotaiProvider>;
 }

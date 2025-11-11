@@ -114,7 +114,6 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
       const demoParagraph =
         "Dupilumab was approved by the FDA for Chronic Rhinosinusitis with Nasal Polyps on June 26, 2019. It was later approved for Asthma on October 20, 2022.";
 
-      // Fake token uncertainties
       const fakeTokenUncertainty = [
         { word: 'Dupilumab', score: 0.2 },
         { word: 'was', score: 0.1 },
@@ -182,7 +181,6 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
       role: 'user',
       content: userText
     };
-    console.log('🧍 User message added:', newUser);
     setMessages(prev => [...prev, newUser]);
 
     const newAssistant: Message = {
@@ -190,7 +188,6 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
       role: 'assistant',
       content: 'Generating answer…'
     };
-    console.log('🤖 Assistant placeholder added:', newAssistant);
     setMessages(prev => [...prev, newAssistant]);
 
     try {
@@ -242,27 +239,25 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
 
   // --- MAIN RENDER ---
   return (
-    <div className="w-full flex justify-center">
-      <div className="max-w-4xl w-full rounded-lg border bg-background p-6">
-        {messages.length ? (
-          <>
-            {/* 🟢 Back to Home Button */}
-            <div className="flex justify-start mb-3">
-              <Button
-                variant="ghost"
-                onClick={handleBackToHome}
-                className="flex items-center space-x-2 text-muted-foreground hover:text-foreground"
-              >
-                <span className="text-lg">←</span>
-                <span>Back to Home</span>
-              </Button>
-            </div>
+    <ViewModeProvider>
+      <div className="w-full flex justify-center">
+        <div className="max-w-4xl w-full rounded-lg border bg-background p-6">
+          {messages.length ? (
+            <>
+              <div className="flex justify-start mb-3">
+                <Button
+                  variant="ghost"
+                  onClick={handleBackToHome}
+                  className="flex items-center space-x-2 text-muted-foreground hover:text-foreground"
+                >
+                  <span className="text-lg">←</span>
+                  <span>Back to Home</span>
+                </Button>
+              </div>
 
-            {/* Conditional view based on visualization mode */}
-            {viewMode === 'paragraph' && (
-              <div className="pt-4 md:pt-10 flex justify-center">
-                <div className="max-w-2xl w-full text-center">
-                  <ViewModeProvider>
+              {viewMode === 'paragraph' && (
+                <div className="pt-4 md:pt-10 flex justify-center">
+                  <div className="max-w-2xl w-full text-center">
                     <ChatList
                       key={messages.map(m => m.id).join('|')}
                       messages={messages}
@@ -270,36 +265,34 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
                       nodes={nodes}
                       edges={edges}
                     />
-                  </ViewModeProvider>
-                  {StopRegenerateButton}
-                  <ChatScrollAnchor trackVisibility={isLoading} />
+                    {StopRegenerateButton}
+                    <ChatScrollAnchor trackVisibility={isLoading} />
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {viewMode === 'relation' && (
-              <div className="pt-4 md:pt-10">
-                <ReactFlowProvider>
-                  <FlowComponent
-                    nodes={nodes}
-                    edges={edges}
-                    onNodesChange={onNodesChange}
-                    onEdgesChange={onEdgesChange}
-                    updateLayout={updateLayout}
-                    setLayoutDirection={setLayoutDirection}
-                    isLoading={isLoading}
-                    id={id}
-                    append={append}
-                    activeStep={0}
-                  />
-                </ReactFlowProvider>
-              </div>
-            )}
+              {viewMode === 'relation' && (
+                <div className="pt-4 md:pt-10">
+                  <ReactFlowProvider>
+                    <FlowComponent
+                      nodes={nodes}
+                      edges={edges}
+                      onNodesChange={onNodesChange}
+                      onEdgesChange={onEdgesChange}
+                      updateLayout={updateLayout}
+                      setLayoutDirection={setLayoutDirection}
+                      isLoading={isLoading}
+                      id={id}
+                      append={append}
+                      activeStep={0}
+                    />
+                  </ReactFlowProvider>
+                </div>
+              )}
 
-            {viewMode === 'token' && (
-              <div className="pt-4 md:pt-10 flex justify-center">
-                <div className="max-w-2xl w-full text-center">
-                  <ViewModeProvider>
+              {viewMode === 'token' && (
+                <div className="pt-4 md:pt-10 flex justify-center">
+                  <div className="max-w-2xl w-full text-center">
                     <ChatList
                       key={messages.map(m => m.id).join('|')}
                       messages={messages}
@@ -307,23 +300,23 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
                       nodes={nodes}
                       edges={edges}
                     />
-                  </ViewModeProvider>
-                  {StopRegenerateButton}
-                  <ChatScrollAnchor trackVisibility={isLoading} />
+                    {StopRegenerateButton}
+                    <ChatScrollAnchor trackVisibility={isLoading} />
+                  </div>
                 </div>
-              </div>
-            )}
-          </>
-        ) : (
-          <EmptyScreen
-            setInput={() => {}}
-            id={id!}
-            append={append}
-            initialOpen={!previewToken || !serperToken}
-            isModelLoaded={!!phi3}
-          />
-        )}
+              )}
+            </>
+          ) : (
+            <EmptyScreen
+              setInput={() => {}}
+              id={id!}
+              append={append}
+              initialOpen={!previewToken || !serperToken}
+              isModelLoaded={!!phi3}
+            />
+          )}
+        </div>
       </div>
-    </div>
+    </ViewModeProvider>
   );
 }
