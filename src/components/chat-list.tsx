@@ -52,9 +52,7 @@ export function ChatList({
   const parseDemo = (msg: any) => {
     try {
       const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg;
-      if (parsed?.type === 'demo') {
-        return parsed;
-      }
+      if (parsed?.type === 'demo') return parsed;
       return null;
     } catch (err) {
       console.warn('⚠️ parseDemo JSON error:', msg);
@@ -62,7 +60,7 @@ export function ChatList({
     }
   };
 
-  // --- visualization for demo paragraph (smooth animated reveal) ---
+  // --- paragraph visualization (animated build + bar grow) ---
   const RenderParagraphDemo = ({ data }: { data: any }) => {
     const words = data.paragraph.split(' ').filter(Boolean);
     const [visibleCount, setVisibleCount] = useState(0);
@@ -71,15 +69,14 @@ export function ChatList({
     useEffect(() => {
       setVisibleCount(0);
       setShowConfidence(false);
-
       const interval = setInterval(() => {
         setVisibleCount(prev => {
           if (prev < words.length) return prev + 1;
           clearInterval(interval);
-          setTimeout(() => setShowConfidence(true), 500);
+          setTimeout(() => setShowConfidence(true), 400);
           return prev;
         });
-      }, Math.max(25, 2000 / words.length)); // adaptive pacing
+      }, Math.max(25, 2000 / words.length));
       return () => clearInterval(interval);
     }, [data.paragraph]);
 
@@ -106,9 +103,8 @@ export function ChatList({
               <div
                 className="h-2 rounded-full"
                 style={{
-                  backgroundColor: 'rgb(216, 180, 132)', // warm beige tone
+                  backgroundColor: 'rgb(216, 180, 132)',
                   animation: `growBar 1.5s ease-out forwards`,
-                  // custom property for target width used by animation
                   ['--target-width' as any]: `${data.overall_confidence * 100}%`,
                 }}
               />
@@ -122,70 +118,95 @@ export function ChatList({
     );
   };
 
-  // --- token visualization (refined, professional beige style) ---
-const RenderTokenDemo = ({ data }: { data: any }) => {
-  const [visibleCount, setVisibleCount] = useState(0);
+  // --- token visualization with beige style + hover tooltip ---
+  const RenderTokenDemo = ({ data }: { data: any }) => {
+    const [visibleCount, setVisibleCount] = useState(0);
+    const [hoveredToken, setHoveredToken] = useState<{ word: string; score: number } | null>(null);
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  useEffect(() => {
-    setVisibleCount(0);
-    const interval = setInterval(() => {
-      setVisibleCount(prev => {
-        if (prev >= data.tokens.length) {
-          clearInterval(interval);
-          return prev;
-        }
-        return prev + 1;
+    useEffect(() => {
+      setVisibleCount(0);
+      const interval = setInterval(() => {
+        setVisibleCount(prev => {
+          if (prev >= data.tokens.length) {
+            clearInterval(interval);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 35);
+      return () => clearInterval(interval);
+    }, [data.tokens]);
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setMousePos({
+        x: e.clientX - rect.left + 12, // 12px right of cursor within container
+        y: e.clientY - rect.top - 30   // slightly above cursor
       });
-    }, 35);
-    return () => clearInterval(interval);
-  }, [data.tokens]);
+    };
 
-  return (
-    <div className="mt-4 text-left flex flex-wrap gap-1 justify-start leading-relaxed">
-      {data.tokens.slice(0, visibleCount).map((t: any, i: number) => {
-        // Only highlight tokens with uncertainty ≥ 0.8
-        const highlight = t.score >= 0.8;
+    return (
+      <div
+        className="mt-4 text-left flex flex-wrap gap-1 justify-start leading-relaxed relative"
+        onMouseMove={handleMouseMove}
+      >
+        {data.tokens.slice(0, visibleCount).map((t: any, i: number) => {
+          const highlight = t.score >= 0.8;
 
-        // Warm beige-to-rose subtle gradient for uncertainty
-        const base = [216, 180, 132]; // beige tone
-        const normScore = (t.score - 0.8) / 0.2; // 0 → low, 1 → high
-        const intensity = Math.min(Math.max(normScore, 0), 1);
+          // Normalize for high-range contrast
+          const normScore = (t.score - 0.8) / 0.2;
+          const intensity = Math.min(Math.max(normScore, 0), 1);
+          const base = [216, 180, 132];
+          const color = highlight
+            ? `rgba(${base[0] + intensity * 45}, ${base[1] - intensity * 120}, ${
+                base[2] - intensity * 100
+              }, 0.9)`
+            : 'transparent';
 
-        const color = highlight
-          ? `rgba(${base[0] + intensity * 45}, ${base[1] - intensity * 120}, ${
-              base[2] - intensity * 100
-            }, 0.9)`
-          : 'transparent';
+          return (
+            <span
+              key={i}
+              onMouseEnter={() => (highlight ? setHoveredToken(t) : null)}
+              onMouseLeave={() => (highlight ? setHoveredToken(null) : null)}
+              style={{
+                backgroundColor: color,
+                padding: highlight ? '1px 3px' : '1px 2px',
+                borderRadius: '3px',
+                border: highlight ? '0.5px solid rgba(0,0,0,0.08)' : 'none',
+                color: highlight ? (t.score > 0.9 ? '#fff' : '#222') : '#222',
+                marginRight: '2px',
+                transition: 'all 0.3s ease',
+                cursor: highlight ? 'pointer' : 'default',
+              }}
+              className="hover:scale-[1.05]"
+            >
+              {t.word}
+            </span>
+          );
+        })}
 
-        return (
-          <span
-            key={i}
-            title={`Uncertainty: ${(t.score * 100).toFixed(1)}%`}
-            className="inline-block opacity-0 animate-[fadeIn_0.4s_ease_forwards]"
+
+        {hoveredToken && (
+          <div
+            className="token-tooltip"
             style={{
-              animationDelay: `${i * 25}ms`,
-              backgroundColor: color,
-              borderRadius: '3px',
-              padding: highlight ? '1px 3px' : '1px 2px',
-              border: highlight ? '0.5px solid rgba(0,0,0,0.08)' : 'none',
-              color: highlight ? (t.score > 0.9 ? '#fff' : '#222') : '#222',
-              marginRight: '2px',
-              transition: 'all 0.3s ease',
-              cursor: highlight ? 'pointer' : 'default',
+              left: `${mousePos.x}px`,
+              top: `${mousePos.y}px`,
             }}
           >
-            {t.word}
-          </span>
-        );
-      })}
-      {visibleCount >= data.tokens.length && (
-        <p className="text-xs text-gray-500 mt-3 w-full italic">
-          ⚠️ Tokens with uncertainty ≥ 0.8 are highlighted
-        </p>
-      )}
-    </div>
-  );
-};
+            Uncertainty: {(hoveredToken.score * 100).toFixed(1)}%
+          </div>
+        )}
+
+        {visibleCount >= data.tokens.length && (
+          <p className="text-xs text-gray-500 mt-3 w-full italic">
+            ⚠️ Tokens with uncertainty ≥ 0.8 are highlighted
+          </p>
+        )}
+      </div>
+    );
+  };
 
   // --- main render ---
   return (
@@ -208,7 +229,6 @@ const RenderTokenDemo = ({ data }: { data: any }) => {
           );
         }
 
-        // fallback: user or regular assistant messages
         return (
           <ChatMessage
             key={index}
