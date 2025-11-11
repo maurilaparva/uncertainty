@@ -677,43 +677,51 @@ Main response text here...
 
       const fullPrompt = `${phi3Prompt}\n\nUser question:\n${userContent}`;
       const result = await phi3(fullPrompt, { max_new_tokens: 400 });
-      console.log('🧠 Mistral output:', result);
+      console.log('🧠 Phi3 output:', result);
 
-     // --- Extract only the main biomedical answer text ---
-      let mainText = result;
+     // --- Extract only the clean biomedical answer text ---
+    let mainText = result;
 
-      // Case 1: capture everything after "===" and before the first CONF
-      const mainMatch = result.match(/===([\s\S]*?)\|\|\s*CONF:/);
-      if (mainMatch) {
-        mainText = mainMatch[1].trim();
-      } else {
-        // Case 2: fallback – capture everything after "User question:" and before CONF
-        const fallback = result.match(/User question:[\s\S]*?\n([\s\S]*?)\|\|\s*CONF:/i);
-        if (fallback) {
-          mainText = fallback[1].trim();
-        } else {
-          // Case 3: last resort – everything before final CONF
-          const confIndex = result.lastIndexOf("|| CONF:");
-          if (confIndex > 0) mainText = result.slice(0, confIndex).trim();
-        }
+    // Step 1: Capture everything after === and before first CONF
+    const mainMatch = result.match(/===\s*([\s\S]*?)\|\|\s*CONF:/);
+    if (mainMatch) {
+      mainText = mainMatch[1].trim();
+    } else {
+      // Step 2: If === not found, capture everything after the question section
+      const altMatch = result.match(/User question:[\s\S]*?\n([\s\S]*?)\|\|\s*CONF:/i);
+      if (altMatch) mainText = altMatch[1].trim();
+      else {
+        // Step 3: fallback – before final CONF
+        const confIndex = result.lastIndexOf("|| CONF:");
+        if (confIndex > 0) mainText = result.slice(0, confIndex).trim();
       }
+    }
 
-      // --- Extract CONF JSON safely ---
-      let conf: { overall?: number; per_paragraph?: number[]; verbal?: string } | undefined;
-      const confMatch = result.match(/\|\|\s*CONF:(\{[\s\S]*?\})/i);
-      if (confMatch) {
-        try {
-          conf = JSON.parse(confMatch[1]);
-        } catch (err) {
-          console.warn('⚠️ Failed to parse CONF JSON', err);
-          const cleaned = confMatch[1].replace(/[^\d,\[\]\{\}:\"A-Za-z%\s]/g, '');
-          try { conf = JSON.parse(cleaned); } catch {}
-        }
+    // Step 4: Remove leftover junk like “User question”, “assistant”, etc.
+    mainText = mainText
+      .replace(/User question:[\s\S]*?\n/i, "")
+      .replace(/^-+\s*\[Answer\]:/i, "")
+      .replace(/\bassistant\b/gi, "")
+      .replace(/===+/g, "")
+      .replace(/\(model self-confidence:[^)]*\)/gi, "")
+      .trim();
+
+    // --- Extract CONF JSON safely ---
+    let conf: { overall?: number; per_paragraph?: number[]; verbal?: string } | undefined;
+    const confMatch = result.match(/\|\|\s*CONF:(\{[\s\S]*?\})/i);
+    if (confMatch) {
+      try {
+        conf = JSON.parse(confMatch[1]);
+      } catch (err) {
+        console.warn('⚠️ Failed to parse CONF JSON', err);
+        const cleaned = confMatch[1].replace(/[^\d,\[\]\{\}:\"A-Za-z%\s]/g, '');
+        try { conf = JSON.parse(cleaned); } catch {}
       }
+    }
 
-      // ✅ Add verification logs here:
-      console.log("🧩 mainText preview:", mainText.slice(0, 200));
-      console.log("📊 conf parsed:", conf);
+    // ✅ Log preview for sanity
+    console.log("🧩 mainText preview:", mainText.slice(0, 200));
+    console.log("📊 conf parsed:", conf);
 
 
       // Annotate paragraphs with per-paragraph self-confidence
