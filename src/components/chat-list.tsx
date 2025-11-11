@@ -64,20 +64,27 @@ export function ChatList({
   }
 
   // --- paragraph visualization ---
-  const renderParagraphDemo = (data: any) => (
-    <div className="mt-4 text-left">
-      <p className="text-lg leading-relaxed text-gray-800">{data.paragraph}</p>
-      <div className="mt-4 w-full bg-gray-200 rounded-full h-3">
-        <div
-          className="bg-blue-500 h-3 rounded-full transition-all duration-500"
-          style={{ width: `${data.overall_confidence * 100}%` }}
-        />
-      </div>
-      <p className="text-sm text-gray-600 mt-1">
-        Confidence: {(data.overall_confidence * 100).toFixed(1)}%
-      </p>
+// --- visualization for demo paragraph ---
+const renderParagraphDemo = (data: any) => (
+  <div className="mt-4 text-left">
+    <p className="text-lg leading-relaxed">{data.paragraph}</p>
+
+    {/* Sleeker confidence bar */}
+    <div className="mt-3 w-full bg-neutral-200 rounded-full h-2 shadow-inner">
+      <div
+        className="h-2 rounded-full transition-all duration-500"
+        style={{
+          width: `${data.overall_confidence * 100}%`,
+          backgroundColor: 'rgb(216, 180, 132)', // warm beige tone
+        }}
+      />
     </div>
-  )
+
+    <p className="text-sm text-gray-600 mt-1 italic">
+      Model confidence: {(data.overall_confidence * 100).toFixed(1)}%
+    </p>
+  </div>
+)
 
   // --- token visualization ---
   const renderTokenDemo = (data: any) => (
