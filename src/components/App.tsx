@@ -651,6 +651,13 @@ Use the above examples only as a guide for format and structure. Do not reuse th
       createdAt: new Date().toISOString()
     };
     setMessages(prev => [...prev, assistantPlaceholder]);
+    setMessages(prev =>
+      prev.map(m =>
+        m.id === assistantMsgId
+          ? { ...m, content: "💭 Generating answer…" }
+          : m
+      )
+    );
 
     try {
       setIsLoading(true);
@@ -743,11 +750,32 @@ Main response text here...
       }
 
       // Update assistant message with annotated output
+      // --- Smooth typewriter animation ---
+      let i = 0;
+      const words = finalText.split(/(\s+)/); // preserve spacing
+      const delay = 15; // ms between updates (tweak for speed)
+
       setMessages(prev =>
         prev.map(m =>
-          m.id === assistantMsgId ? { ...m, content: finalText, selfConf: conf } : m
+          m.id === assistantMsgId
+            ? { ...m, content: '' } // clear "Generating..." placeholder
+            : m
         )
       );
+
+      const typeInterval = setInterval(() => {
+        i++;
+        const partial = words.slice(0, i).join('');
+        setMessages(prev =>
+          prev.map(m =>
+            m.id === assistantMsgId
+              ? { ...m, content: partial, selfConf: conf }
+              : m
+          )
+        );
+        if (i >= words.length) clearInterval(typeInterval);
+      }, delay);
+
 
     } catch (err: any) {
       console.error('❌ Mistral inference failed:', err);
