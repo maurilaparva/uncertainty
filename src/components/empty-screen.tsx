@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { UseChatHelpers } from 'ai/react';
 import { Button } from './ui/button.tsx';
 import { IconArrowRight } from './ui/icons.tsx';
@@ -6,6 +6,7 @@ import { IconArrowRight } from './ui/icons.tsx';
 type EmptyScreenProps = Pick<UseChatHelpers, 'setInput' | 'append'> & {
   id: string;
   initialOpen?: boolean;
+  isModelLoaded?: boolean; // ✅ new prop to indicate Phi-3 load status
 };
 
 const exampleMessages = [
@@ -47,9 +48,34 @@ export function EmptyScreen({
   setInput,
   id,
   append,
-  initialOpen
+  initialOpen,
+  isModelLoaded = false // ✅ defaults to false until ready
 }: EmptyScreenProps) {
   const [showAll, setShowAll] = useState(false);
+  const [dots, setDots] = useState('');
+
+  // simple animated dots (...)
+  useEffect(() => {
+    if (!isModelLoaded) {
+      const interval = setInterval(() => {
+        setDots(prev => (prev.length >= 3 ? '' : prev + '.'));
+      }, 400);
+      return () => clearInterval(interval);
+    }
+  }, [isModelLoaded]);
+
+  // --- ⏳ Show loading screen until model is ready ---
+  if (!isModelLoaded) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-white">
+        <h1 className="text-xl font-semibold text-gray-700">
+          Model loading{dots}
+        </h1>
+      </div>
+    );
+  }
+
+  // --- Once loaded, show the normal intro screen ---
   const visibleExamples = showAll ? exampleMessages : exampleMessages.slice(0, 3);
 
   return (

@@ -664,7 +664,7 @@ Use the above examples only as a guide for format and structure. Do not reuse th
       // === Use Mistral for both generation + self-confidence ===
       const phi3Prompt = `
 You are a biomedical assistant. 
-Answer the user’s question in 1–3 paragraphs.
+Answer the user’s question in 1–3 paragraphs and start by saying yes or no.
 
 After your answer, append:
 || CONF:{"overall":90,"per_paragraph":[90,85],"verbal":"I'm fairly confident overall."}.
@@ -1276,16 +1276,10 @@ useEffect(() => {
           setInput={setInput}
           id={id!}
           append={append}
-          setApiKey={(k: string) => {
-            setPreviewToken(k);
-            localStorage.setItem('has-token-been-set', 'true');
-          }}
-          setSerperKey={(s: string) => {
-            setSerperToken(s);
-            localStorage.setItem('has-token-been-set', 'true');
-          }}
           initialOpen={!previewToken || !serperToken}
+          isModelLoaded={!!phi3}  
         />
+
       )}
 
       {/* Bottom Chat Panel */}
