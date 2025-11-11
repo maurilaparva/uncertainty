@@ -6,7 +6,7 @@ import { IconArrowRight } from './ui/icons.tsx';
 type EmptyScreenProps = Pick<UseChatHelpers, 'setInput' | 'append'> & {
   id: string;
   initialOpen?: boolean;
-  isModelLoaded?: boolean; // ✅ new prop to indicate Phi-3 load status
+  isModelLoaded?: boolean; // ✅ indicates Phi-3 load status
 };
 
 const exampleMessages = [
@@ -45,11 +45,8 @@ const exampleMessages = [
 ];
 
 export function EmptyScreen({
-  setInput,
-  id,
   append,
-  initialOpen,
-  isModelLoaded = false // ✅ defaults to false until ready
+  isModelLoaded = false
 }: EmptyScreenProps) {
   const [showAll, setShowAll] = useState(false);
   const [dots, setDots] = useState('');
@@ -67,8 +64,8 @@ export function EmptyScreen({
   // --- ⏳ Show loading screen until model is ready ---
   if (!isModelLoaded) {
     return (
-      <div className="flex items-center justify-center h-screen bg-white">
-        <h1 className="text-xl font-semibold text-gray-700">
+      <div className="flex items-center justify-center h-screen bg-white transition-opacity duration-500">
+        <h1 className="text-xl font-semibold text-gray-700 animate-pulse">
           Model loading{dots}
         </h1>
       </div>
@@ -79,8 +76,8 @@ export function EmptyScreen({
   const visibleExamples = showAll ? exampleMessages : exampleMessages.slice(0, 3);
 
   return (
-    <div className="mx-auto max-w-2xl px-4">
-      <div className="flex flex-col gap-2 rounded-lg border bg-background p-8">
+    <div className="mx-auto max-w-2xl px-4 fade-in">
+      <div className="flex flex-col gap-2 rounded-lg border bg-background p-8 shadow-sm transition-all duration-500">
         <h1 className="text-lg font-semibold">Uncertainty Visualization</h1>
 
         <p className="mb-2 leading-normal text-muted-foreground">
@@ -103,7 +100,13 @@ export function EmptyScreen({
               key={index}
               variant="link"
               className="h-auto p-0 text-base hover:underline text-left"
-              onClick={() => setInput(message.message)}
+              onClick={() => {
+                if (!isModelLoaded) {
+                  alert('Model is still loading, please wait...');
+                  return;
+                }
+                append(message.message); // ✅ directly trigger model with question
+              }}
             >
               <IconArrowRight className="mr-2 text-muted-foreground" />
               {message.heading}
