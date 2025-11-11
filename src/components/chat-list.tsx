@@ -102,12 +102,14 @@ export function ChatList({
 
         {showConfidence && (
           <>
-            <div className="mt-3 w-full bg-neutral-200 rounded-full h-2 shadow-inner transition-opacity duration-500 opacity-100">
+            <div className="mt-3 w-full bg-neutral-200 rounded-full h-2 shadow-inner overflow-hidden">
               <div
-                className="h-2 rounded-full transition-all duration-700"
+                className="h-2 rounded-full"
                 style={{
-                  width: `${data.overall_confidence * 100}%`,
-                  backgroundColor: 'rgb(216, 180, 132)' // professional beige
+                  backgroundColor: 'rgb(216, 180, 132)', // warm beige tone
+                  animation: `growBar 1.5s ease-out forwards`,
+                  // custom property for target width used by animation
+                  ['--target-width' as any]: `${data.overall_confidence * 100}%`,
                 }}
               />
             </div>
