@@ -115,12 +115,12 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
         "Dupilumab was approved by the FDA for Chronic Rhinosinusitis with Nasal Polyps on June 26, 2019. It was later approved for Asthma on October 20, 2022.";
 
       const fakeTokenUncertainty = [
-        { word: 'Dupilumab', score: 0.2 },
+        { word: 'Dupilumab', score: 0.80 },  // highlight
         { word: 'was', score: 0.1 },
         { word: 'approved', score: 0.3 },
         { word: 'by', score: 0.1 },
         { word: 'the', score: 0.05 },
-        { word: 'FDA', score: 0.25 },
+        { word: 'FDA', score: 0.9 },         // highlight
         { word: 'for', score: 0.15 },
         { word: 'Chronic', score: 0.4 },
         { word: 'Rhinosinusitis', score: 0.45 },
@@ -136,9 +136,9 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
         { word: 'later', score: 0.2 },
         { word: 'approved', score: 0.25 },
         { word: 'for', score: 0.15 },
-        { word: 'Asthma', score: 0.35 },
+        { word: 'Asthma', score: 0.97 },     // highlight
         { word: 'on', score: 0.15 },
-        { word: 'October', score: 0.25 },
+        { word: 'October', score: 0.1 },
         { word: '20,', score: 0.1 },
         { word: '2022.', score: 0.05 }
       ];

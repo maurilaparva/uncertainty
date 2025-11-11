@@ -120,58 +120,70 @@ export function ChatList({
     );
   };
 
-  // --- token visualization (smooth fade per token) ---
-  const RenderTokenDemo = ({ data }: { data: any }) => {
-    const [visibleCount, setVisibleCount] = useState(0);
+  // --- token visualization (refined, professional beige style) ---
+const RenderTokenDemo = ({ data }: { data: any }) => {
+  const [visibleCount, setVisibleCount] = useState(0);
 
-    useEffect(() => {
-      setVisibleCount(0);
-      const interval = setInterval(() => {
-        setVisibleCount(prev => {
-          if (prev >= data.tokens.length) {
-            clearInterval(interval);
-            return prev;
-          }
-          return prev + 1;
-        });
-      }, 35);
-      return () => clearInterval(interval);
-    }, [data.tokens]);
+  useEffect(() => {
+    setVisibleCount(0);
+    const interval = setInterval(() => {
+      setVisibleCount(prev => {
+        if (prev >= data.tokens.length) {
+          clearInterval(interval);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 35);
+    return () => clearInterval(interval);
+  }, [data.tokens]);
 
-    return (
-      <div className="mt-4 text-left flex flex-wrap gap-1 justify-start leading-relaxed">
-        {data.tokens.slice(0, visibleCount).map((t: any, i: number) => {
-          const beige = [216, 180, 132]; // base RGB
-          const color = `rgba(${beige[0] + t.score * 39}, ${
-            beige[1] - t.score * 120
-          }, ${beige[2] - t.score * 120}, ${0.85})`;
-          return (
-            <span
-              key={i}
-              title={`Uncertainty: ${(t.score * 100).toFixed(1)}%`}
-              className="inline-block opacity-0 animate-[fadeIn_0.4s_ease_forwards]"
-              style={{
-                animationDelay: `${i * 25}ms`,
-                backgroundColor: color,
-                padding: '2px 4px',
-                borderRadius: '4px',
-                color: t.score > 0.45 ? 'white' : 'black',
-                marginRight: '2px',
-                transition: 'all 0.3s ease'
-              }}
-            >
-              {t.word}
-            </span>
-          );
-        })}
-        {visibleCount >= data.tokens.length && (
-          <p className="text-xs text-gray-500 mt-3 w-full italic">
-            🔴 Darker = higher uncertainty
-          </p>
-        )}
-      </div>
-    );
-  };
+  return (
+    <div className="mt-4 text-left flex flex-wrap gap-1 justify-start leading-relaxed">
+      {data.tokens.slice(0, visibleCount).map((t: any, i: number) => {
+        // Only highlight tokens with uncertainty ≥ 0.8
+        const highlight = t.score >= 0.8;
+
+        // Warm beige-to-rose subtle gradient for uncertainty
+        const base = [216, 180, 132]; // beige tone
+        const normScore = (t.score - 0.8) / 0.2; // 0 → low, 1 → high
+        const intensity = Math.min(Math.max(normScore, 0), 1);
+
+        const color = highlight
+          ? `rgba(${base[0] + intensity * 45}, ${base[1] - intensity * 120}, ${
+              base[2] - intensity * 100
+            }, 0.9)`
+          : 'transparent';
+
+        return (
+          <span
+            key={i}
+            title={`Uncertainty: ${(t.score * 100).toFixed(1)}%`}
+            className="inline-block opacity-0 animate-[fadeIn_0.4s_ease_forwards]"
+            style={{
+              animationDelay: `${i * 25}ms`,
+              backgroundColor: color,
+              borderRadius: '3px',
+              padding: highlight ? '1px 3px' : '1px 2px',
+              border: highlight ? '0.5px solid rgba(0,0,0,0.08)' : 'none',
+              color: highlight ? (t.score > 0.9 ? '#fff' : '#222') : '#222',
+              marginRight: '2px',
+              transition: 'all 0.3s ease',
+              cursor: highlight ? 'pointer' : 'default',
+            }}
+          >
+            {t.word}
+          </span>
+        );
+      })}
+      {visibleCount >= data.tokens.length && (
+        <p className="text-xs text-gray-500 mt-3 w-full italic">
+          ⚠️ Tokens with uncertainty ≥ 0.8 are highlighted
+        </p>
+      )}
+    </div>
+  );
+};
 
   // --- main render ---
   return (
