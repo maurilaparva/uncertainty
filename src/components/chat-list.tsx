@@ -373,7 +373,10 @@ const RenderToken = ({ data }: { data: any }) => {
               {viewMode === 'token' && <RenderToken data={gptData} />}
               {viewMode === 'relation' && (
                 <div className="mt-6 fade-in">
-                  <FlowComponent relations={gptData.relations} />
+                  <FlowComponent
+                    centralClaim={gptData.central_claim}
+                    relations={gptData.relations}
+                  />
                 </div>
               )}
               {viewMode === 'raw' && <RenderRaw message={message} />}

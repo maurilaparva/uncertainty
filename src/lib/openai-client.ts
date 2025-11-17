@@ -51,21 +51,51 @@ Given a question, return STRICT JSON capturing reasoning and uncertainty.
 - Typically **3–7 tokens**, but fewer allowed if certainty is strong.
 - Tokens must be one word only.
 
-#### RELATIONS (BALANCED ARGUMENT SET)
-- Provide **4–8 relations total**.
-- MUST be **unique** and not semantically redundant.
-- Relation fields:
-  - "source": short span (≤ 8 words)
-  - "type": MUST be SUPPORTS or ATTACKS (uppercase)
-  - "target": short span (≤ 8 words)
-  - "score": float 0–1
-- **The number of SUPPORTS must equal the number of ATTACKS.**
-  Examples:
-    - 2 SUPPORTS + 2 ATTACKS
-    - 3 SUPPORTS + 3 ATTACKS
-    - 4 SUPPORTS + 4 ATTACKS
-- If the reasoning does not naturally produce balance, 
-  you MUST expand or reduce relations until they are balanced.
+#### CENTRAL CLAIM
+You MUST output a single field:
+  "central_claim": "<the main conclusion of the answer>"
+
+- Must be ≤ 12 words.
+- Must clearly answer the user's question.
+- All relations MUST point toward this claim.
+
+#### RELATIONS (Balanced Argument Set)
+You MUST output an array "relations": [
+  { "source": "...", "type": "SUPPORTS", "target": "central_claim", "score": 0.0 },
+  { "source": "...", "type": "ATTACKS",  "target": "central_claim", "score": 0.0 }
+]
+
+Rules:
+- Provide 2-6 relations total.
+- You MUST output exactly the same number of SUPPORTS and ATTACKS. 
+- For example: 2 SUPPORTS + 2 ATTACKS, or 3 SUPPORTS + 3 ATTACKS. 
+-You may NOT output uneven counts such as 5 SUPPORTS + 3 ATTACKS.
+- Every relation's "target" MUST be exactly the central_claim string.
+- "source" must be ≤ 8 words.
+- "type" must be SUPPORTS or ATTACKS (uppercase).
+- "score" is a float 0–1 representing uncertainty.
+- All relations MUST be explicit arguments that directly address the truth or falsehood of the central_claim. 
+- Statements that are merely background facts, definitions, or explanations without argumentative force are NOT allowed.
+- A SUPPORTS relation must present evidence that directly strengthens, justifies, or explains why the central_claim is true.
+- An ATTACKS relation must present evidence that directly challenges, contradicts, or weakens the central_claim.
+- Relations MUST be genuine arguments, not unrelated facts or generic statements.
+
+#### RELATION UNCERTAINTY RULES
+For each relation, "score" MUST represent how uncertain the model is about that specific supporting or attacking claim.
+The score reflects the model's internal doubt about the correctness of that argument.
+
+Scores MUST vary — relations cannot all have the same score.
+You MUST output exactly the same number of SUPPORTS and ATTACKS, if not possible, then trim down so they are even.
+Rules:
+- Scores MUST vary. Relations cannot all share the same score.
+- 0.0–0.3 → model is highly uncertain this argument is correct
+- 0.3–0.6 → model is moderately uncertain
+- 0.6–0.85 → model is mostly confident
+- 0.85–1.0 → model is extremely confident (very low uncertainty)
+
+No two relation scores may be identical.
+Each score must reflect the differing strength of evidence.
+If you cannot produce an equal number of SUPPORTS and ATTACKS, you must adjust or rewrite the arguments until the counts match.
 
 #### JSON RULES
 - Must output VALID JSON ONLY.
