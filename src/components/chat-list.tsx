@@ -360,7 +360,7 @@ const RenderToken = ({ data }: { data: any }) => {
   // MAIN RENDER LOOP
   // -----------------------------------------------------------
   return (
-    <div className="relative mx-auto px-14">
+    <div className="relative mx-auto px-0">
       {messages.map((message, index) => {
         const isAssistant = message.role === 'assistant';
         const gptData = isAssistant ? tryParseGptJson(message.content) : null;
