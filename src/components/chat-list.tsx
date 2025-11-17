@@ -120,92 +120,102 @@ export function ChatList({
 
   // --- token visualization with smooth fade/slide animation + hover tooltip ---
   const RenderTokenDemo = ({ data }: { data: any }) => {
-    const [visibleCount, setVisibleCount] = useState(0);
-    const [hoveredToken, setHoveredToken] = useState<{ word: string; score: number } | null>(null);
-    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [visibleCount, setVisibleCount] = useState(0);
+  const [hoveredToken, setHoveredToken] =
+    useState<{ word: string; score: number } | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-    useEffect(() => {
-      setVisibleCount(0);
-      const interval = setInterval(() => {
-        setVisibleCount(prev => {
-          if (prev >= data.tokens.length) {
-            clearInterval(interval);
-            return prev;
-          }
-          return prev + 1;
-        });
-      }, 35);
-      return () => clearInterval(interval);
-    }, [data.tokens]);
-
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement, MouseEvent>) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      setMousePos({
-        x: e.clientX - rect.left + 12,
-        y: e.clientY - rect.top - 30
+  useEffect(() => {
+    setVisibleCount(0);
+    const interval = setInterval(() => {
+      setVisibleCount(prev => {
+        if (prev >= data.tokens.length) {
+          clearInterval(interval);
+          return prev;
+        }
+        return prev + 1;
       });
-    };
+    }, 35);
+    return () => clearInterval(interval);
+  }, [data.tokens]);
 
-    return (
-      <div
-        className="mt-4 text-left flex flex-wrap gap-1 justify-start leading-relaxed relative"
-        onMouseMove={handleMouseMove}
-      >
-        {data.tokens.slice(0, visibleCount).map((t: any, i: number) => {
-          const highlight = t.score >= 0.8;
-          const normScore = (t.score - 0.8) / 0.2;
-          const intensity = Math.min(Math.max(normScore, 0), 1);
-          const base = [216, 180, 132];
-          const color = highlight
-            ? `rgba(${base[0] + intensity * 45}, ${base[1] - intensity * 120}, ${
-                base[2] - intensity * 100
-              }, 0.9)`
-            : 'transparent';
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({
+      x: e.clientX - rect.left + 12,
+      y: e.clientY - rect.top - 30
+    });
+  };
 
-          return (
-            <span
-              key={i}
-              onMouseEnter={() => (highlight ? setHoveredToken(t) : null)}
-              onMouseLeave={() => (highlight ? setHoveredToken(null) : null)}
-              className="opacity-0 animate-[fadeInUp_0.4s_ease_forwards] hover:scale-[1.05]"
-              style={{
-                animationDelay: `${i * 25}ms`,
-                backgroundColor: color,
-                borderRadius: '3px',
-                border: highlight ? '0.5px solid rgba(0,0,0,0.08)' : 'none',
-                color: highlight ? (t.score > 0.9 ? '#fff' : '#222') : '#222',
-                padding: highlight ? '1px 3px' : '1px 2px',
-                marginRight: '2px',
-                cursor: highlight ? 'pointer' : 'default',
-                whiteSpace: 'pre',
-                transition: 'all 0.3s ease',
-              }}
-            >
-              {t.word}
-            </span>
-          );
-        })}
+  // Base highlight color
+  const baseColor = "255, 185, 100";
+  const threshold = 0.8;
 
-        {hoveredToken && (
-          <div
-            className="token-tooltip"
+  return (
+    <div
+      className="mt-4 text-left flex flex-wrap gap-1 justify-start leading-relaxed relative"
+      onMouseMove={handleMouseMove}
+    >
+      {data.tokens.slice(0, visibleCount).map((t: any, i: number) => {
+
+        let alpha = 0;
+
+        if (t.score >= threshold) {
+          // Map [0.8 → 1.0] into [0.5 → 1.0]
+          alpha = 0.5 + ((t.score - threshold) / (1 - threshold)) * 0.5;
+        }
+
+        // Only highlight >= 0.8
+        const bgColor = alpha > 0 ? `rgba(${baseColor}, ${alpha})` : "transparent";
+
+        return (
+          <span
+            key={i}
+            onMouseEnter={() => (t.score >= threshold ? setHoveredToken(t) : null)}
+            onMouseLeave={() => (t.score >= threshold ? setHoveredToken(null) : null)}
+            className="opacity-0 animate-[fadeInUp_0.4s_ease_forwards] hover:scale-[1.05]"
             style={{
-              left: `${mousePos.x}px`,
-              top: `${mousePos.y}px`,
+              animationDelay: `${i * 25}ms`,
+              backgroundColor: bgColor,
+              borderRadius: "3px",
+              padding: "1px 3px",
+              marginRight: "2px",
+              whiteSpace: "pre",
+              transition: "all 0.3s ease",
+              color: "#222",
+              cursor: t.score >= threshold ? "pointer" : "default"
             }}
           >
-            Uncertainty: {(hoveredToken.score * 100).toFixed(1)}%
-          </div>
-        )}
+            {t.word}
+          </span>
+        );
+      })}
 
-        {visibleCount >= data.tokens.length && (
-          <p className="text-xs text-gray-500 mt-3 w-full italic">
-            ⚠️ Tokens with uncertainty ≥ 0.8 are highlighted
-          </p>
-        )}
-      </div>
-    );
-  };
+      {hoveredToken && (
+        <div
+          className="token-tooltip"
+          style={{
+            left: `${mousePos.x}px`,
+            top: `${mousePos.y}px`
+          }}
+        >
+          Uncertainty: {(hoveredToken.score * 100).toFixed(1)}%
+        </div>
+      )}
+
+      {/* keep your warning */}
+      {visibleCount >= data.tokens.length && (
+        <p className="text-xs text-gray-500 mt-3 w-full italic">
+          ⚠️ Tokens with uncertainty ≥ 0.8 are highlighted
+        </p>
+      )}
+    </div>
+  );
+};
+
+
+
+
 
   // --- main render ---
   return (

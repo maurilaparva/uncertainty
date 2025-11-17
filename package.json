@@ -11,6 +11,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "d3-scale": "^4.0.2",
+    "d3-scale-chromatic": "^3.0.0",
     "@ai-sdk/openai": "^0.0.53",
     "@material-tailwind/react": "^2.1.10",
     "@radix-ui/react-alert-dialog": "^1.1.1",
