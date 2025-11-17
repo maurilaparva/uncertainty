@@ -44,7 +44,7 @@ function useLabelToColorMap(nodes: CustomGraphNode[]) {
 }
 
 // -------------------------------------------------------------
-// NEW: GPT JSON PARSER
+// GPT JSON PARSER
 // -------------------------------------------------------------
 const tryParseGptJson = (msg: any) => {
   if (typeof msg !== 'string') return null;
@@ -62,7 +62,7 @@ const tryParseGptJson = (msg: any) => {
 };
 
 // -------------------------------------------------------------
-// NEW: Raw output mode
+// Raw output mode
 // -------------------------------------------------------------
 const RenderRaw = ({ message }: { message: Message }) => (
   <pre className="text-left whitespace-pre-wrap bg-neutral-50 p-3 rounded border text-sm mt-4">
@@ -88,205 +88,256 @@ export function ChatList({
   if (!messages.length) return null;
 
   // -----------------------------------------------------------
-  // Paragraph Visualization
+  // Paragraph Visualization — fixed sequential paragraphs
   // -----------------------------------------------------------
-  // -----------------------------------------------------------
-// FIXED RenderParagraph — proper paragraphs + sequential animation
-// -----------------------------------------------------------
-const RenderParagraph = ({ data }: { data: any }) => {
-  const paragraphs = data.answer.split(/\n\s*\n/); // split on blank lines
+  const RenderParagraph = ({ data }: { data: any }) => {
+    const paragraphs = data.answer.split(/\n\s*\n/); // split on blank lines
 
-  // track word counts per paragraph
-  const [visibleWordCounts, setVisibleWordCounts] = useState<number[]>(
-    paragraphs.map(() => 0)
-  );
+    const [visibleWordCounts, setVisibleWordCounts] = useState<number[]>(
+      paragraphs.map(() => 0)
+    );
+    const [activeParagraph, setActiveParagraph] = useState(0);
+    const [showConfidence, setShowConfidence] = useState(false);
 
-  const [activeParagraph, setActiveParagraph] = useState(0);
-  const [showConfidence, setShowConfidence] = useState(false);
+    useEffect(() => {
+      let cancelled = false;
 
-  useEffect(() => {
-    let cancelled = false;
+      setVisibleWordCounts(paragraphs.map(() => 0));
+      setActiveParagraph(0);
+      setShowConfidence(false);
 
-    // reset on new answer
-    setVisibleWordCounts(paragraphs.map(() => 0));
-    setActiveParagraph(0);
-    setShowConfidence(false);
+      const wait = (ms: number) =>
+        new Promise(resolve => setTimeout(resolve, ms));
 
-    const wait = (ms: number) =>
-      new Promise(resolve => setTimeout(resolve, ms));
-
-    async function animate() {
-      for (let p = 0; p < paragraphs.length; p++) {
-        if (cancelled) return;
-
-        setActiveParagraph(p);
-
-        const words = paragraphs[p].split(/\s+/).filter(Boolean);
-
-        for (let w = 0; w < words.length; w++) {
+      async function animate() {
+        for (let p = 0; p < paragraphs.length; p++) {
           if (cancelled) return;
 
-          setVisibleWordCounts(prev => {
-            const updated = [...prev];
-            updated[p] = w + 1;
-            return updated;
-          });
+          setActiveParagraph(p);
+          const words = paragraphs[p].split(/\s+/).filter(Boolean);
 
-          await wait(35); // speed of each word
+          for (let w = 0; w < words.length; w++) {
+            if (cancelled) return;
+
+            setVisibleWordCounts(prev => {
+              const updated = [...prev];
+              updated[p] = w + 1;
+              return updated;
+            });
+
+            await wait(35);
+          }
+
+          await wait(350);
         }
 
-        await wait(350); // pause before next paragraph starts
+        await wait(300);
+        setShowConfidence(true);
       }
 
-      await wait(300);
-      setShowConfidence(true);
-    }
+      animate();
 
-    animate();
+      return () => {
+        cancelled = true;
+      };
+    }, [data.answer]);
 
-    return () => {
-      cancelled = true;
-    };
+    return (
+      <div className="mt-4 text-left">
+        {paragraphs.map((para, pIdx) => {
+          const words = para.split(/\s+/).filter(Boolean);
+          const count = visibleWordCounts[pIdx];
+          const isVisible = pIdx <= activeParagraph;
+          if (!isVisible) return null;
+
+          return (
+            <p
+              key={pIdx}
+              className="text-lg leading-relaxed flex flex-wrap gap-1 mb-6"
+              style={{
+                paddingLeft: '0px',
+                marginLeft: '0px',
+              }}
+            >
+              {words.map((word, i) => (
+                <span
+                  key={i}
+                  className={`
+                    inline-block transition-all duration-200
+                    ${i < count ? 'opacity-100' : 'opacity-0 translate-y-1'}
+                  `}
+                  style={{ whiteSpace: 'pre' }}
+                >
+                  {word + ' '}
+                </span>
+              ))}
+            </p>
+          );
+        })}
+
+        {showConfidence && (
+          <>
+            <div className="mt-3 w-full bg-neutral-200 rounded-full h-2 shadow-inner overflow-hidden">
+              <div
+                className="h-2 rounded-full"
+                style={{
+                  backgroundColor: 'rgb(216,180,132)',
+                  animation: `growBar 1.5s ease-out forwards`,
+                  ['--target-width' as any]: `${data.overall_confidence * 100}%`,
+                }}
+              />
+            </div>
+            <p className="text-sm text-gray-600 mt-1 italic">
+              Model confidence: {(data.overall_confidence * 100).toFixed(1)}%
+            </p>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // -----------------------------------------------------------
+  // Token Visualization — show ALL words, highlight uncertain
+  // -----------------------------------------------------------
+  // -----------------------------------------------------------
+// Token Visualization — paragraphs + gradient uncertainty
+// -----------------------------------------------------------
+const RenderToken = ({ data }: { data: any }) => {
+  const text: string = data.answer || "";
+  const tokenInfo: { token: string; score: number }[] =
+    data.token_uncertainty || [];
+
+  // Split paragraphs
+  const paragraphs = text.split(/\n\s*\n/);
+
+  // Split words per paragraph
+  const paragraphWords = paragraphs.map((p) =>
+    p.split(/\s+/).filter(Boolean)
+  );
+
+  // Flatten for 1:1 token alignment
+  const flatWords = paragraphWords.flat();
+
+  const wordObjects = flatWords.map((w, i) => ({
+    text: w,
+    score: tokenInfo[i]?.score,
+  }));
+
+  const [visibleCount, setVisibleCount] = useState(0);
+
+  // Reveal animation
+  useEffect(() => {
+    setVisibleCount(0);
+    if (!wordObjects.length) return;
+
+    const interval = setInterval(() => {
+      setVisibleCount(prev => {
+        if (prev >= wordObjects.length) {
+          clearInterval(interval);
+          return prev;
+        }
+        return prev + 1;
+      });
+    }, 30);
+
+    return () => clearInterval(interval);
   }, [data.answer]);
 
+  // Tooltip
+  const [hoveredScore, setHoveredScore] = useState<number | null>(null);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+
+  const handleMouseMove = (e: any) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setMousePos({
+      x: e.clientX - rect.left + 14,
+      y: e.clientY - rect.top - 36,
+    });
+  };
+
+  // NEW amber color (matches paragraph bar)
+  const amberRGB = "216, 180, 132";
+  const threshold = 0.8;
+
+  let globalIndex = 0;
+
   return (
-    <div className="mt-4 text-left">
-      {paragraphs.map((para, pIdx) => {
-        const words = para.split(/\s+/).filter(Boolean);
-        const count = visibleWordCounts[pIdx];
+    <div
+      className="mt-4 text-left leading-relaxed relative"
+      onMouseMove={handleMouseMove}
+    >
+      {paragraphWords.map((words, pIdx) => (
+        <p
+          key={pIdx}
+          className="mb-6 flex flex-wrap gap-1 text-lg"
+          style={{ paddingLeft: "0px", marginLeft: "0px" }}
+        >
+          {words.map(() => {
+            const w = wordObjects[globalIndex];
+            const id = globalIndex;
+            globalIndex++;
 
-        const isVisible = pIdx <= activeParagraph;
+            const isVisible = id < visibleCount;
 
-        if (!isVisible) return null;
+            const score = w.score;
+            const hasScore = typeof score === "number";
 
-        return (
-          <p
-            key={pIdx}
-            className="text-lg leading-relaxed flex flex-wrap gap-1 mb-6"
-            style={{
-              paddingLeft: "0px",          // consistent indentation
-              marginLeft: "0px",
-            }}
-          >
-            {words.map((word, i) => (
+            // ORIGINAL WORKING OPACITY LOGIC
+            let alpha = 0;
+            if (hasScore && score >= threshold) {
+              alpha =
+                0.5 + ((score - threshold) / (1 - threshold)) * 0.5;
+            }
+
+            return (
               <span
-                key={i}
-                className={`
-                  inline-block transition-all duration-200
-                  ${i < count ? "opacity-100" : "opacity-0 translate-y-1"}
-                `}
-                style={{ whiteSpace: "pre" }}
-              >
-                {word + " "}
-              </span>
-            ))}
-          </p>
-        );
-      })}
+                key={id}
+                onMouseEnter={() => hasScore && setHoveredScore(score!)}
+                onMouseLeave={() => setHoveredScore(null)}
+                className={`inline-block transition-all duration-200 ${
+                  isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
+                }`}
+                style={{
+                  animation: isVisible
+                    ? "fadeInUp 0.35s ease forwards"
+                    : undefined,
+                  animationDelay: `${id * 18}ms`,
 
-      {showConfidence && (
-        <>
-          <div className="mt-3 w-full bg-neutral-200 rounded-full h-2 shadow-inner overflow-hidden">
-            <div
-              className="h-2 rounded-full"
-              style={{
-                backgroundColor: "rgb(216,180,132)",
-                animation: `growBar 1.5s ease-out forwards`,
-                ["--target-width" as any]: `${data.overall_confidence * 100}%`,
-              }}
-            />
-          </div>
-          <p className="text-sm text-gray-600 mt-1 italic">
-            Model confidence: {(data.overall_confidence * 100).toFixed(1)}%
-          </p>
-        </>
+                  // NEW aesthetic color — NO BORDER
+                  backgroundColor:
+                    alpha > 0 ? `rgba(${amberRGB}, ${alpha})` : "transparent",
+
+                  borderRadius: "4px",
+                  padding: "2px 4px",
+                  whiteSpace: "pre",
+                }}
+              >
+                {w.text + " "}
+              </span>
+            );
+          })}
+        </p>
+      ))}
+
+      {hoveredScore !== null && (
+        <div
+          className="absolute bg-black text-white text-xs px-2 py-1 rounded z-40 shadow-lg"
+          style={{
+            left: mousePos.x,
+            top: mousePos.y,
+            pointerEvents: "none",
+          }}
+        >
+          Uncertainty: {(hoveredScore * 100).toFixed(1)}%
+        </div>
       )}
     </div>
   );
 };
 
 
-  // -----------------------------------------------------------
-  // Token Visualization
-  // -----------------------------------------------------------
-  const RenderToken = ({ data }: { data: any }) => {
-    const tokens = data.token_uncertainty || [];
-    const [visibleCount, setVisibleCount] = useState(0);
-    const [hoveredToken, setHoveredToken] = useState<any>(null);
-    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-    useEffect(() => {
-      setVisibleCount(0);
-      const interval = setInterval(() => {
-        setVisibleCount(prev => {
-          if (prev >= tokens.length) {
-            clearInterval(interval);
-            return prev;
-          }
-          return prev + 1;
-        });
-      }, 35);
-      return () => clearInterval(interval);
-    }, [tokens]);
 
-    const handleMouseMove = (e: any) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      setMousePos({
-        x: e.clientX - rect.left + 12,
-        y: e.clientY - rect.top - 30,
-      });
-    };
-
-    const baseColor = "255, 185, 100";
-    const threshold = 0.8;
-
-    return (
-      <div
-        className="mt-4 text-left flex flex-wrap gap-1 leading-relaxed relative"
-        onMouseMove={handleMouseMove}
-      >
-        {tokens.slice(0, visibleCount).map((t: any, i: number) => {
-          const alpha =
-            t.score >= threshold
-              ? 0.5 + ((t.score - threshold) / (1 - threshold)) * 0.5
-              : 0;
-
-          return (
-            <span
-              key={i}
-              onMouseEnter={() => (t.score >= threshold ? setHoveredToken(t) : null)}
-              onMouseLeave={() => setHoveredToken(null)}
-              className="opacity-0 animate-[fadeInUp_0.4s_ease_forwards] hover:scale-[1.05]"
-              style={{
-                animationDelay: `${i * 25}ms`,
-                backgroundColor:
-                  t.score >= threshold ? `rgba(${baseColor}, ${alpha})` : "transparent",
-                borderRadius: "3px",
-                padding: "1px 3px",
-                marginRight: "2px",
-                color: "#222",
-                whiteSpace: "pre",
-              }}
-            >
-              {t.token}
-            </span>
-          );
-        })}
-
-        {hoveredToken && (
-          <div
-            className="token-tooltip"
-            style={{
-              left: `${mousePos.x}px`,
-              top: `${mousePos.y}px`
-            }}
-          >
-            Uncertainty: {(hoveredToken.score * 100).toFixed(1)}%
-          </div>
-        )}
-      </div>
-    );
-  };
 
   // -----------------------------------------------------------
   // MAIN RENDER LOOP
