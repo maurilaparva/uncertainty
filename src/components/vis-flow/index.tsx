@@ -97,24 +97,32 @@ export default function FlowComponent() {
 
     const sigma = computeDfQuad(demoArgs)
 
-    // ✅ Fixed layout + edge anchor directions
+    // ------------------------------
+    // NODE BACKGROUND COLOR RULE:
+    // green fill when σ > 0.5
+    // red fill when σ <= 0.5
+    // opacity scales with sigma
+    // ------------------------------
+    const green = (s: number) => `rgba(78, 148, 79, ${0.35 + s * 0.55})`
+    const red   = (s: number) => `rgba(196, 62, 62, ${0.35 + s * 0.55})`
+
     const n: Node[] = [
       {
         id: 'claim',
         data: { label: `${demoArgs[0].label}\nσ=${sigma['claim'].toFixed(2)}` },
         position: { x: 300, y: 80 },
-        targetPosition: 'bottom', // ✅ incoming edges attach to bottom
-        sourcePosition: 'top',    // ✅ outgoing edges (if any) go upward
+        targetPosition: 'bottom',
+        sourcePosition: 'top',
         style: {
-          background: `rgba(230, 215, 180, ${0.4 + sigma['claim'] * 0.6})`,
-          border: `2px solid ${sigma['claim'] > 0.5 ? '#4e944f' : '#c43e3e'}`,
+          background: sigma['claim'] > 0.5 ? green(sigma['claim']) : red(sigma['claim']),
           borderRadius: 12,
           padding: 10,
           textAlign: 'center',
           fontWeight: 500,
           whiteSpace: 'pre-line',
           transition: 'all 0.6s ease',
-          fontSize: '14px', // reverted smaller consistent font
+          fontSize: '14px',
+          color: 'black'
         },
       },
       {
@@ -124,14 +132,14 @@ export default function FlowComponent() {
         targetPosition: 'bottom',
         sourcePosition: 'top',
         style: {
-          background: `rgba(230, 215, 180, ${0.4 + sigma['a1'] * 0.6})`,
-          border: '2px solid #c43e3e',
+          background: sigma['a1'] > 0.5 ? green(sigma['a1']) : red(sigma['a1']),
           borderRadius: 12,
           padding: 10,
           textAlign: 'center',
           fontWeight: 500,
           whiteSpace: 'pre-line',
           fontSize: '14px',
+          color: 'black'
         },
       },
       {
@@ -141,14 +149,14 @@ export default function FlowComponent() {
         targetPosition: 'bottom',
         sourcePosition: 'top',
         style: {
-          background: `rgba(230, 215, 180, ${0.4 + sigma['a2'] * 0.6})`,
-          border: '2px solid #4e944f',
+          background: sigma['a2'] > 0.5 ? green(sigma['a2']) : red(sigma['a2']),
           borderRadius: 12,
           padding: 10,
           textAlign: 'center',
           fontWeight: 500,
           whiteSpace: 'pre-line',
           fontSize: '14px',
+          color: 'black'
         },
       },
     ]
@@ -159,14 +167,14 @@ export default function FlowComponent() {
         source: 'a1',
         target: 'claim',
         label: 'attack',
-        labelStyle: { fontSize: 15},
-        labelShowBg: true, 
+        labelStyle: { fontSize: 15 },
+        labelShowBg: true,
         labelBgStyle: {
-          fill: "rgba(255,255,255,0.95)",   // faint white
-          stroke: "rgba(0,0,0,0.15)",      // very light border
-          strokeWidth: 0.6,                // thin outline
-          padding: 2,                      // minimal padding
-          borderRadius: 4                  // soft corners
+          fill: "rgba(255,255,255,0.95)",
+          stroke: "rgba(0,0,0,0.15)",
+          strokeWidth: 0.6,
+          padding: 2,
+          borderRadius: 4
         },
         animated: true,
         style: { stroke: '#c43e3e', strokeWidth: 2 },
@@ -177,14 +185,14 @@ export default function FlowComponent() {
         source: 'a2',
         target: 'claim',
         label: 'support',
-        labelStyle: { fontSize: 15},
-        labelShowBg: true, 
+        labelStyle: { fontSize: 15 },
+        labelShowBg: true,
         labelBgStyle: {
-          fill: "rgba(255,255,255,0.95)",   // faint white
-          stroke: "rgba(0,0,0,0.15)",      // very light border
-          strokeWidth: 0.6,                // thin outline
-          padding: 2,                      // minimal padding
-          borderRadius: 4                  // soft corners
+          fill: "rgba(255,255,255,0.95)",
+          stroke: "rgba(0,0,0,0.15)",
+          strokeWidth: 0.6,
+          padding: 2,
+          borderRadius: 4
         },
         animated: true,
         style: { stroke: '#4e944f', strokeWidth: 2 },
@@ -217,7 +225,7 @@ export default function FlowComponent() {
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         fitView
-        proOptions={{ hideAttribution: true }} // ✅ removes “React Flow” watermark
+        proOptions={{ hideAttribution: true }}
         zoomOnScroll={false}
         zoomOnPinch={false}
         panOnScroll={false}
