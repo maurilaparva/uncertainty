@@ -106,6 +106,7 @@ export function EmptyScreen({
               <option value="paragraph">Paragraph-Level</option>
               <option value="relation">Relation-Level</option>
               <option value="token">Token-Level</option>
+              <option value="raw">Raw Output</option>
             </select>
           </div>
 

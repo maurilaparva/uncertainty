@@ -19,7 +19,8 @@ import { viewModeAtom } from '../lib/state.ts';
 import FlowComponent from './vis-flow/index.tsx';
 import { Button } from './ui/button.tsx';
 import 'reactflow/dist/style.css';
-import { loadPhi3 } from './model/model.ts';
+// 🔁 REPLACE Phi-3 import with GPT-4 helper:
+import { askGpt4Once } from '../lib/openai-client.ts';
 import {
   CustomGraphNode,
   CustomGraphEdge
@@ -61,21 +62,12 @@ const getLayoutedElements = (
   return { nodes, edges };
 };
 
+const normalizeQuestion = (q: string) => q.trim().toLowerCase();
+
 // ---- component start ----
 export function Chat({ id, initialMessages }: { id?: string; initialMessages?: Message[] }) {
-  const [phi3, setPhi3] = useState<any | null>(null);
-  useEffect(() => {
-    let mounted = true;
-    (async () => {
-      console.log('⏳ Loading Phi-3...');
-      const model = await loadPhi3();
-      if (mounted) setPhi3(() => model);
-      console.log('✅ Phi-3 loaded:', model ? 'success' : 'failed');
-    })();
-    return () => {
-      mounted = false;
-    };
-  }, []);
+  // ✅ Key presence flag for UX + EmptyScreen
+  const hasOpenAiKey = !!import.meta.env.VITE_OPENAI_API_KEY;
 
   const [viewMode] = useAtom(viewModeAtom);
   const [messages, setMessages] = useState<Message[]>(initialMessages ?? []);
@@ -83,6 +75,9 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [layoutDirection, setLayoutDirection] = useState('TB');
   const [isLoading, setIsLoading] = useState(false);
+
+  // ✅ Simple in-memory cache: normalizedQuestion -> answer text
+  const [qaCache, setQaCache] = useState<Record<string, string>>({});
 
   const handleBackToHome = useCallback(() => {
     console.log('↩️ Returning to Home — clearing messages');
@@ -99,7 +94,7 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
     console.log('📜 Messages updated:', messages);
   }, [messages]);
 
-  // 🧠 Enhanced append() with demo case
+  // 🧠 Enhanced append() with demo + GPT-4 + caching
   const append = async (msg: Partial<Message> | string) => {
     console.log('🧠 append() received:', msg);
     const userText = typeof msg === 'string' ? msg : msg.content ?? '';
@@ -169,41 +164,71 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
       return;
     }
 
-    // 🔄 Normal model behavior
-    if (!phi3 || typeof phi3 !== 'function') {
-      toast.error('Model not ready yet.');
+    // 🔐 Ensure key exists
+    if (!hasOpenAiKey) {
+      toast.error('OpenAI API key is not set in .env (VITE_OPENAI_API_KEY).');
       return;
     }
 
-    setIsLoading(true);
+    const normalized = normalizeQuestion(userText);
+
+    // ✅ User message object
     const newUser: Message = {
       id: crypto.randomUUID(),
       role: 'user',
       content: userText,
     };
-    setMessages((prev) => [...prev, newUser]);
+
+    // 1️⃣ If we already answered this question, reuse cached answer
+    if (qaCache[normalized]) {
+      console.log('♻️ Using cached answer for:', normalized);
+
+      const cachedAssistant: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: qaCache[normalized],
+      };
+
+      setMessages((prev) => [...prev, newUser, cachedAssistant]);
+      return;
+    }
+
+    // 2️⃣ Otherwise, call GPT-4 and cache the result
+    setIsLoading(true);
 
     const newAssistant: Message = {
       id: crypto.randomUUID(),
       role: 'assistant',
       content: 'Generating answer…',
     };
-    setMessages((prev) => [...prev, newAssistant]);
+
+    // Add both user + placeholder assistant
+    setMessages((prev) => [...prev, newUser, newAssistant]);
 
     try {
-      console.log('⚙️ Calling Phi-3 model...');
-      const res = await phi3(`Answer the question: ${userText}`, {
-        max_new_tokens: 400,
-      });
-      console.log('✅ Phi-3 response:', res);
+      console.log('⚙️ Calling GPT-4 via askGpt4Once...');
+      const res = await askGpt4Once(userText);
+      console.log('✅ GPT-4 response:', res);
+
+      // update messages: replace placeholder content
       setMessages((prev) =>
         prev.map((m) =>
           m.id === newAssistant.id ? { ...m, content: res } : m
         )
       );
+
+      // cache result for this normalized question
+      setQaCache((prev) => ({
+        ...prev,
+        [normalized]: res,
+      }));
     } catch (err) {
-      console.error('❌ Model inference failed:', err);
-      toast.error('Model inference failed.');
+      console.error('❌ GPT-4 inference failed:', err);
+      toast.error('GPT-4 inference failed.');
+      // optional: clear the placeholder if error
+      setMessages((prev) =>
+        prev.filter((m) => m.id !== newAssistant.id)
+      );
     } finally {
       setIsLoading(false);
     }
@@ -299,7 +324,7 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
               id={id!}
               append={append}
               initialOpen={!previewToken || !serperToken}
-              isModelLoaded={!!phi3}
+              isModelLoaded={hasOpenAiKey}
             />
           )}
         </div>

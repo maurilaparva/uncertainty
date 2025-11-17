@@ -4,7 +4,7 @@ import { useViewMode } from './ui/view-mode';
 import { ChatMessage } from './chat-message';
 import { CustomGraphNode, CustomGraphEdge } from '../lib/types';
 import React, { useEffect, useState } from 'react';
-import FlowComponent from './vis-flow/index.tsx'; // ✅ NEW import
+import FlowComponent from './vis-flow/index.tsx';
 
 const stripCategories = (s: string) =>
   s
@@ -36,6 +36,21 @@ function useLabelToColorMap(nodes: CustomGraphNode[]) {
     return m;
   }, [nodes]);
 }
+
+// -------------------------------------------------------------
+// NEW: Raw output mode
+// -------------------------------------------------------------
+const RenderRaw = ({ message }: { message: Message }) => {
+  return (
+    <pre className="text-left whitespace-pre-wrap bg-neutral-50 p-3 rounded border text-sm mt-4">
+      {typeof message.content === 'string'
+        ? message.content
+        : JSON.stringify(message.content, null, 2)}
+    </pre>
+  );
+};
+// -------------------------------------------------------------
+
 
 export function ChatList({
   messages,
@@ -118,106 +133,98 @@ export function ChatList({
     );
   };
 
-  // --- token visualization with smooth fade/slide animation + hover tooltip ---
+  // --- token visualization with animations ---
   const RenderTokenDemo = ({ data }: { data: any }) => {
-  const [visibleCount, setVisibleCount] = useState(0);
-  const [hoveredToken, setHoveredToken] =
-    useState<{ word: string; score: number } | null>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [visibleCount, setVisibleCount] = useState(0);
+    const [hoveredToken, setHoveredToken] =
+      useState<{ word: string; score: number } | null>(null);
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  useEffect(() => {
-    setVisibleCount(0);
-    const interval = setInterval(() => {
-      setVisibleCount(prev => {
-        if (prev >= data.tokens.length) {
-          clearInterval(interval);
-          return prev;
-        }
-        return prev + 1;
+    useEffect(() => {
+      setVisibleCount(0);
+      const interval = setInterval(() => {
+        setVisibleCount(prev => {
+          if (prev >= data.tokens.length) {
+            clearInterval(interval);
+            return prev;
+          }
+          return prev + 1;
+        });
+      }, 35);
+      return () => clearInterval(interval);
+    }, [data.tokens]);
+
+    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+      const rect = e.currentTarget.getBoundingClientRect();
+      setMousePos({
+        x: e.clientX - rect.left + 12,
+        y: e.clientY - rect.top - 30
       });
-    }, 35);
-    return () => clearInterval(interval);
-  }, [data.tokens]);
+    };
 
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    setMousePos({
-      x: e.clientX - rect.left + 12,
-      y: e.clientY - rect.top - 30
-    });
-  };
+    const baseColor = "255, 185, 100";
+    const threshold = 0.8;
 
-  // Base highlight color
-  const baseColor = "255, 185, 100";
-  const threshold = 0.8;
+    return (
+      <div
+        className="mt-4 text-left flex flex-wrap gap-1 justify-start leading-relaxed relative"
+        onMouseMove={handleMouseMove}
+      >
+        {data.tokens.slice(0, visibleCount).map((t: any, i: number) => {
+          let alpha = 0;
+          if (t.score >= threshold) {
+            alpha = 0.5 + ((t.score - threshold) / (1 - threshold)) * 0.5;
+          }
 
-  return (
-    <div
-      className="mt-4 text-left flex flex-wrap gap-1 justify-start leading-relaxed relative"
-      onMouseMove={handleMouseMove}
-    >
-      {data.tokens.slice(0, visibleCount).map((t: any, i: number) => {
+          const bgColor = alpha > 0 ? `rgba(${baseColor}, ${alpha})` : "transparent";
 
-        let alpha = 0;
+          return (
+            <span
+              key={i}
+              onMouseEnter={() => (t.score >= threshold ? setHoveredToken(t) : null)}
+              onMouseLeave={() => (t.score >= threshold ? setHoveredToken(null) : null)}
+              className="opacity-0 animate-[fadeInUp_0.4s_ease_forwards] hover:scale-[1.05]"
+              style={{
+                animationDelay: `${i * 25}ms`,
+                backgroundColor: bgColor,
+                borderRadius: "3px",
+                padding: "1px 3px",
+                marginRight: "2px",
+                whiteSpace: "pre",
+                transition: "all 0.3s ease",
+                color: "#222",
+                cursor: t.score >= threshold ? "pointer" : "default"
+              }}
+            >
+              {t.word}
+            </span>
+          );
+        })}
 
-        if (t.score >= threshold) {
-          // Map [0.8 → 1.0] into [0.5 → 1.0]
-          alpha = 0.5 + ((t.score - threshold) / (1 - threshold)) * 0.5;
-        }
-
-        // Only highlight >= 0.8
-        const bgColor = alpha > 0 ? `rgba(${baseColor}, ${alpha})` : "transparent";
-
-        return (
-          <span
-            key={i}
-            onMouseEnter={() => (t.score >= threshold ? setHoveredToken(t) : null)}
-            onMouseLeave={() => (t.score >= threshold ? setHoveredToken(null) : null)}
-            className="opacity-0 animate-[fadeInUp_0.4s_ease_forwards] hover:scale-[1.05]"
+        {hoveredToken && (
+          <div
+            className="token-tooltip"
             style={{
-              animationDelay: `${i * 25}ms`,
-              backgroundColor: bgColor,
-              borderRadius: "3px",
-              padding: "1px 3px",
-              marginRight: "2px",
-              whiteSpace: "pre",
-              transition: "all 0.3s ease",
-              color: "#222",
-              cursor: t.score >= threshold ? "pointer" : "default"
+              left: `${mousePos.x}px`,
+              top: `${mousePos.y}px`
             }}
           >
-            {t.word}
-          </span>
-        );
-      })}
+            Uncertainty: {(hoveredToken.score * 100).toFixed(1)}%
+          </div>
+        )}
 
-      {hoveredToken && (
-        <div
-          className="token-tooltip"
-          style={{
-            left: `${mousePos.x}px`,
-            top: `${mousePos.y}px`
-          }}
-        >
-          Uncertainty: {(hoveredToken.score * 100).toFixed(1)}%
-        </div>
-      )}
+        {visibleCount >= data.tokens.length && (
+          <p className="text-xs text-gray-500 mt-3 w-full italic">
+            ⚠️ Tokens with uncertainty ≥ 0.8 are highlighted
+          </p>
+        )}
+      </div>
+    );
+  };
 
-      {/* keep your warning */}
-      {visibleCount >= data.tokens.length && (
-        <p className="text-xs text-gray-500 mt-3 w-full italic">
-          ⚠️ Tokens with uncertainty ≥ 0.8 are highlighted
-        </p>
-      )}
-    </div>
-  );
-};
-
-
-
-
-
-  // --- main render ---
+  // -------------------------------------------------------------
+  // MAIN RENDER
+  // -------------------------------------------------------------
   return (
     <div className="relative mx-auto px-14">
       {messages.map((message, index) => {
@@ -229,17 +236,17 @@ export function ChatList({
             <div key={index} className="my-6 text-left">
               {viewMode === 'paragraph' && <RenderParagraphDemo data={demoData} />}
               {viewMode === 'token' && <RenderTokenDemo data={demoData} />}
-              
-              {/* ✅ NEW: relation view renders your DF-QUAD FlowComponent */}
               {viewMode === 'relation' && (
                 <div className="mt-6 fade-in">
                   <FlowComponent />
                 </div>
               )}
+              {viewMode === 'raw' && <RenderRaw message={message} />}
             </div>
           );
         }
 
+        // normal chat messages
         return (
           <ChatMessage
             key={index}
