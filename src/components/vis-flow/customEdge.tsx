@@ -119,24 +119,26 @@ const CustomEdge: FC<EdgeProps> = ({
                 ...style,
                 position: 'absolute',
                 transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
-                backgroundColor: 'rgba(255,255,255,0.7)',
+                backgroundColor: 'rgba(255,255,255,0.8)',
                 backdropFilter: 'blur(6px)',
                 WebkitBackdropFilter: 'blur(6px)',
-                border: '1px solid #e5e7eb',
+                border: '1px solid #d1d5db',
                 borderRadius: 9999,
-                padding: '2px 10px',
+                padding: '4px 14px',        // bigger padding
                 boxShadow: '0 1px 2px rgba(0,0,0,0.08)',
-                fontSize: 12,
-                fontWeight: 500,
+                fontSize: 18,               // <<< bigger label
+                fontWeight: 700,            // <<< bolder label
                 cursor: 'pointer',
                 pointerEvents: 'all',
-                userSelect: 'none'
+                userSelect: 'none',
+                lineHeight: 1,              // cleaner vertical centering
               }}
               className="nodrag nopan"
               title="See evidence"
             >
               {label?.toString()}
             </div>
+
           </PopoverHandler>
 
           <PopoverContent className="z-[1000] max-w-[17rem] p-2">

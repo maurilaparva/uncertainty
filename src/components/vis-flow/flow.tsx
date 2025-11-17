@@ -15,6 +15,7 @@ import ReactFlow, {
 } from 'reactflow'
 
 import 'reactflow/dist/style.css'
+import CustomEdge from './customEdge'
 
 // --- DF-QuAD helper ------------------------------------------------
 interface Argument {
@@ -133,28 +134,50 @@ export default function FlowTest({
     }))
 
     const e: Edge[] = [
-      {
-        id: 'a1-claim',
-        source: 'a1',
-        target: 'claim',
-        label: 'attack',
-        animated: true,
-        style: { stroke: 'red' },
-      },
-      {
-        id: 'a2-claim',
-        source: 'a2',
-        target: 'claim',
-        label: 'support',
-        animated: true,
-        style: { stroke: 'green' },
-      },
-    ]
+  {
+    id: 'a1-claim',
+    source: 'a1',
+    target: 'claim',
+    type: 'custom',
+    label: 'attack',
+    animated: true,
+    style: { stroke: 'red' },
+    labelStyle: { fontSize: 40, fontWeight: 700 },
+    labelShowBg: true,
+    labelBgStyle: {
+      fill: 'rgba(255,255,255,0.8)',
+      stroke: 'none',
+      padding: 4,
+      borderRadius: 4
+    },
+  },
+  {
+    id: 'a2-claim',
+    source: 'a2',
+    target: 'claim',
+    type: 'custom',
+    label: 'support',
+    animated: true,
+    style: { stroke: 'green' },
+    labelStyle: { fontSize: 18, fontWeight: 700 },
+    labelShowBg: true,
+    labelBgStyle: {
+      fill: 'rgba(255,255,255,0.8)',
+      stroke: 'none',
+      padding: 4,
+      borderRadius: 4
+    },
+  },
+];
+
 
     setNodes(n)
     setEdges(e)
   }, [])
   // ---------------------------------------------------------------
+  const edgeTypes = {
+    custom: CustomEdge,
+  };
 
   return (
     <div
@@ -168,6 +191,7 @@ export default function FlowTest({
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        edgeTypes = {edgeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}

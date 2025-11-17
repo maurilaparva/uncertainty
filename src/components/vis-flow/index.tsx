@@ -159,6 +159,15 @@ export default function FlowComponent() {
         source: 'a1',
         target: 'claim',
         label: 'attack',
+        labelStyle: { fontSize: 15},
+        labelShowBg: true, 
+        labelBgStyle: {
+          fill: "rgba(255,255,255,0.95)",   // faint white
+          stroke: "rgba(0,0,0,0.15)",      // very light border
+          strokeWidth: 0.6,                // thin outline
+          padding: 2,                      // minimal padding
+          borderRadius: 4                  // soft corners
+        },
         animated: true,
         style: { stroke: '#c43e3e', strokeWidth: 2 },
         markerEnd: { type: 'arrowclosed', color: '#c43e3e' },
@@ -168,6 +177,15 @@ export default function FlowComponent() {
         source: 'a2',
         target: 'claim',
         label: 'support',
+        labelStyle: { fontSize: 15},
+        labelShowBg: true, 
+        labelBgStyle: {
+          fill: "rgba(255,255,255,0.95)",   // faint white
+          stroke: "rgba(0,0,0,0.15)",      // very light border
+          strokeWidth: 0.6,                // thin outline
+          padding: 2,                      // minimal padding
+          borderRadius: 4                  // soft corners
+        },
         animated: true,
         style: { stroke: '#4e944f', strokeWidth: 2 },
         markerEnd: { type: 'arrowclosed', color: '#4e944f' },
