@@ -90,62 +90,121 @@ export function ChatList({
   // -----------------------------------------------------------
   // Paragraph Visualization
   // -----------------------------------------------------------
-  const RenderParagraph = ({ data }: { data: any }) => {
-    const words = data.answer.split(' ').filter(Boolean);
-    const [visibleCount, setVisibleCount] = useState(0);
-    const [showConfidence, setShowConfidence] = useState(false);
+  // -----------------------------------------------------------
+// FIXED RenderParagraph — proper paragraphs + sequential animation
+// -----------------------------------------------------------
+const RenderParagraph = ({ data }: { data: any }) => {
+  const paragraphs = data.answer.split(/\n\s*\n/); // split on blank lines
 
-    useEffect(() => {
-      setVisibleCount(0);
-      setShowConfidence(false);
-      const interval = setInterval(() => {
-        setVisibleCount(prev => {
-          if (prev < words.length) return prev + 1;
-          clearInterval(interval);
-          setTimeout(() => setShowConfidence(true), 400);
-          return prev;
-        });
-      }, Math.max(25, 2000 / words.length));
-      return () => clearInterval(interval);
-    }, [data.answer]);
+  // track word counts per paragraph
+  const [visibleWordCounts, setVisibleWordCounts] = useState<number[]>(
+    paragraphs.map(() => 0)
+  );
 
-    return (
-      <div className="mt-4 text-left">
-        <p className="text-lg leading-relaxed flex flex-wrap gap-1">
-          {words.slice(0, visibleCount).map((word, i) => (
-            <span
-              key={i}
-              className="inline-block opacity-0 animate-[fadeInUp_0.45s_ease_forwards]"
+  const [activeParagraph, setActiveParagraph] = useState(0);
+  const [showConfidence, setShowConfidence] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    // reset on new answer
+    setVisibleWordCounts(paragraphs.map(() => 0));
+    setActiveParagraph(0);
+    setShowConfidence(false);
+
+    const wait = (ms: number) =>
+      new Promise(resolve => setTimeout(resolve, ms));
+
+    async function animate() {
+      for (let p = 0; p < paragraphs.length; p++) {
+        if (cancelled) return;
+
+        setActiveParagraph(p);
+
+        const words = paragraphs[p].split(/\s+/).filter(Boolean);
+
+        for (let w = 0; w < words.length; w++) {
+          if (cancelled) return;
+
+          setVisibleWordCounts(prev => {
+            const updated = [...prev];
+            updated[p] = w + 1;
+            return updated;
+          });
+
+          await wait(35); // speed of each word
+        }
+
+        await wait(350); // pause before next paragraph starts
+      }
+
+      await wait(300);
+      setShowConfidence(true);
+    }
+
+    animate();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [data.answer]);
+
+  return (
+    <div className="mt-4 text-left">
+      {paragraphs.map((para, pIdx) => {
+        const words = para.split(/\s+/).filter(Boolean);
+        const count = visibleWordCounts[pIdx];
+
+        const isVisible = pIdx <= activeParagraph;
+
+        if (!isVisible) return null;
+
+        return (
+          <p
+            key={pIdx}
+            className="text-lg leading-relaxed flex flex-wrap gap-1 mb-6"
+            style={{
+              paddingLeft: "0px",          // consistent indentation
+              marginLeft: "0px",
+            }}
+          >
+            {words.map((word, i) => (
+              <span
+                key={i}
+                className={`
+                  inline-block transition-all duration-200
+                  ${i < count ? "opacity-100" : "opacity-0 translate-y-1"}
+                `}
+                style={{ whiteSpace: "pre" }}
+              >
+                {word + " "}
+              </span>
+            ))}
+          </p>
+        );
+      })}
+
+      {showConfidence && (
+        <>
+          <div className="mt-3 w-full bg-neutral-200 rounded-full h-2 shadow-inner overflow-hidden">
+            <div
+              className="h-2 rounded-full"
               style={{
-                animationDelay: `${i * 35}ms`,
-                whiteSpace: 'pre'
+                backgroundColor: "rgb(216,180,132)",
+                animation: `growBar 1.5s ease-out forwards`,
+                ["--target-width" as any]: `${data.overall_confidence * 100}%`,
               }}
-            >
-              {word + ' '}
-            </span>
-          ))}
-        </p>
+            />
+          </div>
+          <p className="text-sm text-gray-600 mt-1 italic">
+            Model confidence: {(data.overall_confidence * 100).toFixed(1)}%
+          </p>
+        </>
+      )}
+    </div>
+  );
+};
 
-        {showConfidence && (
-          <>
-            <div className="mt-3 w-full bg-neutral-200 rounded-full h-2 shadow-inner overflow-hidden">
-              <div
-                className="h-2 rounded-full"
-                style={{
-                  backgroundColor: 'rgb(216, 180, 132)',
-                  animation: `growBar 1.5s ease-out forwards`,
-                  ['--target-width' as any]: `${data.overall_confidence * 100}%`,
-                }}
-              />
-            </div>
-            <p className="text-sm text-gray-600 mt-1 italic transition-opacity duration-700">
-              Model confidence: {(data.overall_confidence * 100).toFixed(1)}%
-            </p>
-          </>
-        )}
-      </div>
-    );
-  };
 
   // -----------------------------------------------------------
   // Token Visualization
