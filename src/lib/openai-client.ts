@@ -49,7 +49,7 @@ Given a question, return STRICT JSON capturing reasoning and uncertainty.
 - Include **only tokens/phrases the model is MOST uncertain about**.
 - **Every score must be ≥ 0.8**.
 - Typically **3–7 tokens**, but fewer allowed if certainty is strong.
-- Tokens must be short (1–3 words).
+- Tokens must be one word only.
 
 #### RELATIONS (BALANCED ARGUMENT SET)
 - Provide **4–8 relations total**.

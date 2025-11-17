@@ -204,35 +204,36 @@ export function ChatList({
 // -----------------------------------------------------------
 const RenderToken = ({ data }: { data: any }) => {
   const text: string = data.answer || "";
+
+  // Sparse uncertainty list (each has 1 word + score)
   const tokenInfo: { token: string; score: number }[] =
     data.token_uncertainty || [];
 
-  // Split paragraphs
+  // Convert list → Map for instant lookup
+  const scoreMap = new Map<string, number>();
+  for (const t of tokenInfo) {
+    scoreMap.set(t.token.toLowerCase(), t.score);
+  }
+
+  // Split into paragraphs
   const paragraphs = text.split(/\n\s*\n/);
 
-  // Split words per paragraph
+  // Words per paragraph
   const paragraphWords = paragraphs.map((p) =>
     p.split(/\s+/).filter(Boolean)
   );
 
-  // Flatten for 1:1 token alignment
-  const flatWords = paragraphWords.flat();
-
-  const wordObjects = flatWords.map((w, i) => ({
-    text: w,
-    score: tokenInfo[i]?.score,
-  }));
-
+  // Reveal animation counter
+  const totalWords = paragraphWords.flat().length;
   const [visibleCount, setVisibleCount] = useState(0);
 
-  // Reveal animation
   useEffect(() => {
     setVisibleCount(0);
-    if (!wordObjects.length) return;
+    if (!totalWords) return;
 
     const interval = setInterval(() => {
-      setVisibleCount(prev => {
-        if (prev >= wordObjects.length) {
+      setVisibleCount((prev) => {
+        if (prev >= totalWords) {
           clearInterval(interval);
           return prev;
         }
@@ -243,7 +244,7 @@ const RenderToken = ({ data }: { data: any }) => {
     return () => clearInterval(interval);
   }, [data.answer]);
 
-  // Tooltip
+  // Tooltip state
   const [hoveredScore, setHoveredScore] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
@@ -255,9 +256,8 @@ const RenderToken = ({ data }: { data: any }) => {
     });
   };
 
-  // NEW amber color (matches paragraph bar)
+  // Aesthetic soft amber color (matches your paragraph bar)
   const amberRGB = "216, 180, 132";
-  const threshold = 0.8;
 
   let globalIndex = 0;
 
@@ -272,30 +272,46 @@ const RenderToken = ({ data }: { data: any }) => {
           className="mb-6 flex flex-wrap gap-1 text-lg"
           style={{ paddingLeft: "0px", marginLeft: "0px" }}
         >
-          {words.map(() => {
-            const w = wordObjects[globalIndex];
+          {words.map((word) => {
             const id = globalIndex;
+            const isVisible = id < visibleCount;
             globalIndex++;
 
-            const isVisible = id < visibleCount;
+            // CLEAN lookup key (preserve punctuation visually)
+            const clean = word
+              .toLowerCase()
+              .replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, ""); // trim punctuation only at edges
 
-            const score = w.score;
-            const hasScore = typeof score === "number";
+            const score = scoreMap.has(clean)
+              ? scoreMap.get(clean)!
+              : null;
 
-            // ORIGINAL WORKING OPACITY LOGIC
+            const isUncertain = typeof score === "number";
+
+            // Restored correct intensity curve
+            // score 0.8 → just starting visible
+            // score 0.9 → medium amber
+            // score 1.0 → strongest amber
             let alpha = 0;
-            if (hasScore && score >= threshold) {
-              alpha =
-                0.5 + ((score - threshold) / (1 - threshold)) * 0.5;
-            }
+            if (isUncertain) {
+            // Normalize score 0.8–1.0 → 0–1
+            const intensity = Math.max(0, score - 0.8) / 0.2;
+
+            // New much stronger scale:
+            // 0 → 0.10
+            // 1 → 1.00
+            alpha = 0.40 + intensity * 0.90;
+          }
 
             return (
               <span
                 key={id}
-                onMouseEnter={() => hasScore && setHoveredScore(score!)}
+                onMouseEnter={() => isUncertain && setHoveredScore(score!)}
                 onMouseLeave={() => setHoveredScore(null)}
                 className={`inline-block transition-all duration-200 ${
-                  isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-1"
+                  isVisible
+                    ? "opacity-100 translate-y-0"
+                    : "opacity-0 translate-y-1"
                 }`}
                 style={{
                   animation: isVisible
@@ -303,7 +319,6 @@ const RenderToken = ({ data }: { data: any }) => {
                     : undefined,
                   animationDelay: `${id * 18}ms`,
 
-                  // NEW aesthetic color — NO BORDER
                   backgroundColor:
                     alpha > 0 ? `rgba(${amberRGB}, ${alpha})` : "transparent",
 
@@ -312,7 +327,7 @@ const RenderToken = ({ data }: { data: any }) => {
                   whiteSpace: "pre",
                 }}
               >
-                {w.text + " "}
+                {word + " "}
               </span>
             );
           })}
@@ -334,6 +349,8 @@ const RenderToken = ({ data }: { data: any }) => {
     </div>
   );
 };
+
+
 
 
 
