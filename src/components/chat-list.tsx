@@ -6,6 +6,9 @@ import { CustomGraphNode, CustomGraphEdge } from '../lib/types';
 import React, { useEffect, useState } from 'react';
 import FlowComponent from './vis-flow/index.tsx';
 
+// -------------------------------------------------------------
+// Utility: strip categories for normal chat messages
+// -------------------------------------------------------------
 const stripCategories = (s: string) =>
   s
     .replace(/\s*\|\|\s*\[[\s\S]*$|\s*\|\s*\[[\s\S]*$/g, '')
@@ -21,6 +24,9 @@ export interface ChatListProps {
   clickedNode?: any;
 }
 
+// -------------------------------------------------------------
+// Color map
+// -------------------------------------------------------------
 function useLabelToColorMap(nodes: CustomGraphNode[]) {
   return React.useMemo(() => {
     const m = new Map<string, string>();
@@ -38,20 +44,37 @@ function useLabelToColorMap(nodes: CustomGraphNode[]) {
 }
 
 // -------------------------------------------------------------
+// NEW: GPT JSON PARSER
+// -------------------------------------------------------------
+const tryParseGptJson = (msg: any) => {
+  if (typeof msg !== 'string') return null;
+  try {
+    const parsed = JSON.parse(msg);
+    if (
+      parsed &&
+      typeof parsed.answer === 'string' &&
+      typeof parsed.overall_confidence === 'number'
+    ) {
+      return parsed;
+    }
+  } catch (_) {}
+  return null;
+};
+
+// -------------------------------------------------------------
 // NEW: Raw output mode
 // -------------------------------------------------------------
-const RenderRaw = ({ message }: { message: Message }) => {
-  return (
-    <pre className="text-left whitespace-pre-wrap bg-neutral-50 p-3 rounded border text-sm mt-4">
-      {typeof message.content === 'string'
-        ? message.content
-        : JSON.stringify(message.content, null, 2)}
-    </pre>
-  );
-};
+const RenderRaw = ({ message }: { message: Message }) => (
+  <pre className="text-left whitespace-pre-wrap bg-neutral-50 p-3 rounded border text-sm mt-4">
+    {typeof message.content === 'string'
+      ? message.content
+      : JSON.stringify(message.content, null, 2)}
+  </pre>
+);
+
 // -------------------------------------------------------------
-
-
+// COMPONENT
+// -------------------------------------------------------------
 export function ChatList({
   messages,
   activeStep,
@@ -64,20 +87,11 @@ export function ChatList({
 
   if (!messages.length) return null;
 
-  const parseDemo = (msg: any) => {
-    try {
-      const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg;
-      if (parsed?.type === 'demo') return parsed;
-      return null;
-    } catch (err) {
-      console.warn('⚠️ parseDemo JSON error:', msg);
-      return null;
-    }
-  };
-
-  // --- paragraph visualization (animated build + bar grow) ---
-  const RenderParagraphDemo = ({ data }: { data: any }) => {
-    const words = data.paragraph.split(' ').filter(Boolean);
+  // -----------------------------------------------------------
+  // Paragraph Visualization
+  // -----------------------------------------------------------
+  const RenderParagraph = ({ data }: { data: any }) => {
+    const words = data.answer.split(' ').filter(Boolean);
     const [visibleCount, setVisibleCount] = useState(0);
     const [showConfidence, setShowConfidence] = useState(false);
 
@@ -93,7 +107,7 @@ export function ChatList({
         });
       }, Math.max(25, 2000 / words.length));
       return () => clearInterval(interval);
-    }, [data.paragraph]);
+    }, [data.answer]);
 
     return (
       <div className="mt-4 text-left">
@@ -133,18 +147,20 @@ export function ChatList({
     );
   };
 
-  // --- token visualization with animations ---
-  const RenderTokenDemo = ({ data }: { data: any }) => {
+  // -----------------------------------------------------------
+  // Token Visualization
+  // -----------------------------------------------------------
+  const RenderToken = ({ data }: { data: any }) => {
+    const tokens = data.token_uncertainty || [];
     const [visibleCount, setVisibleCount] = useState(0);
-    const [hoveredToken, setHoveredToken] =
-      useState<{ word: string; score: number } | null>(null);
+    const [hoveredToken, setHoveredToken] = useState<any>(null);
     const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
     useEffect(() => {
       setVisibleCount(0);
       const interval = setInterval(() => {
         setVisibleCount(prev => {
-          if (prev >= data.tokens.length) {
+          if (prev >= tokens.length) {
             clearInterval(interval);
             return prev;
           }
@@ -152,13 +168,13 @@ export function ChatList({
         });
       }, 35);
       return () => clearInterval(interval);
-    }, [data.tokens]);
+    }, [tokens]);
 
-    const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const handleMouseMove = (e: any) => {
       const rect = e.currentTarget.getBoundingClientRect();
       setMousePos({
         x: e.clientX - rect.left + 12,
-        y: e.clientY - rect.top - 30
+        y: e.clientY - rect.top - 30,
       });
     };
 
@@ -167,36 +183,33 @@ export function ChatList({
 
     return (
       <div
-        className="mt-4 text-left flex flex-wrap gap-1 justify-start leading-relaxed relative"
+        className="mt-4 text-left flex flex-wrap gap-1 leading-relaxed relative"
         onMouseMove={handleMouseMove}
       >
-        {data.tokens.slice(0, visibleCount).map((t: any, i: number) => {
-          let alpha = 0;
-          if (t.score >= threshold) {
-            alpha = 0.5 + ((t.score - threshold) / (1 - threshold)) * 0.5;
-          }
-
-          const bgColor = alpha > 0 ? `rgba(${baseColor}, ${alpha})` : "transparent";
+        {tokens.slice(0, visibleCount).map((t: any, i: number) => {
+          const alpha =
+            t.score >= threshold
+              ? 0.5 + ((t.score - threshold) / (1 - threshold)) * 0.5
+              : 0;
 
           return (
             <span
               key={i}
               onMouseEnter={() => (t.score >= threshold ? setHoveredToken(t) : null)}
-              onMouseLeave={() => (t.score >= threshold ? setHoveredToken(null) : null)}
+              onMouseLeave={() => setHoveredToken(null)}
               className="opacity-0 animate-[fadeInUp_0.4s_ease_forwards] hover:scale-[1.05]"
               style={{
                 animationDelay: `${i * 25}ms`,
-                backgroundColor: bgColor,
+                backgroundColor:
+                  t.score >= threshold ? `rgba(${baseColor}, ${alpha})` : "transparent",
                 borderRadius: "3px",
                 padding: "1px 3px",
                 marginRight: "2px",
-                whiteSpace: "pre",
-                transition: "all 0.3s ease",
                 color: "#222",
-                cursor: t.score >= threshold ? "pointer" : "default"
+                whiteSpace: "pre",
               }}
             >
-              {t.word}
+              {t.token}
             </span>
           );
         })}
@@ -212,33 +225,28 @@ export function ChatList({
             Uncertainty: {(hoveredToken.score * 100).toFixed(1)}%
           </div>
         )}
-
-        {visibleCount >= data.tokens.length && (
-          <p className="text-xs text-gray-500 mt-3 w-full italic">
-            ⚠️ Tokens with uncertainty ≥ 0.8 are highlighted
-          </p>
-        )}
       </div>
     );
   };
 
-  // -------------------------------------------------------------
-  // MAIN RENDER
-  // -------------------------------------------------------------
+  // -----------------------------------------------------------
+  // MAIN RENDER LOOP
+  // -----------------------------------------------------------
   return (
     <div className="relative mx-auto px-14">
       {messages.map((message, index) => {
         const isAssistant = message.role === 'assistant';
-        const demoData = isAssistant ? parseDemo(message.content) : null;
+        const gptData = isAssistant ? tryParseGptJson(message.content) : null;
 
-        if (isAssistant && demoData) {
+        // --- GPT answer ---
+        if (isAssistant && gptData) {
           return (
             <div key={index} className="my-6 text-left">
-              {viewMode === 'paragraph' && <RenderParagraphDemo data={demoData} />}
-              {viewMode === 'token' && <RenderTokenDemo data={demoData} />}
+              {viewMode === 'paragraph' && <RenderParagraph data={gptData} />}
+              {viewMode === 'token' && <RenderToken data={gptData} />}
               {viewMode === 'relation' && (
                 <div className="mt-6 fade-in">
-                  <FlowComponent />
+                  <FlowComponent relations={gptData.relations} />
                 </div>
               )}
               {viewMode === 'raw' && <RenderRaw message={message} />}
@@ -246,7 +254,7 @@ export function ChatList({
           );
         }
 
-        // normal chat messages
+        // --- Normal chat message ---
         return (
           <ChatMessage
             key={index}

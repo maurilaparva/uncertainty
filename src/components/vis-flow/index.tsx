@@ -15,9 +15,23 @@ import ReactFlow, {
 
 import 'reactflow/dist/style.css'
 
-// ------------------------------
-// DF-QuAD helper functions
-// ------------------------------
+// ----------------------------------------
+// Types from your new GPT JSON
+// ----------------------------------------
+interface Relation {
+  source: string
+  target: string
+  type: 'SUPPORTS' | 'ATTACKS'
+  score: number
+}
+
+interface FlowProps {
+  relations: Relation[]
+}
+
+// ----------------------------------------
+// DF-QuAD helper functions (unchanged)
+// ----------------------------------------
 interface Argument {
   id: string
   label: string
@@ -53,19 +67,19 @@ function computeDfQuad(args: Argument[]) {
   return sigma
 }
 
-// ------------------------------
-// Main visualization component
-// ------------------------------
-export default function FlowComponent() {
+// ----------------------------------------
+// Main Visualization Component
+// ----------------------------------------
+export default function FlowComponent({ relations }: FlowProps) {
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
 
   const onNodesChange: OnNodesChange = useCallback(
-    chs => setNodes(nds => applyNodeChanges(chs, nds)),
+    ch => setNodes(nds => applyNodeChanges(ch, nds)),
     []
   )
   const onEdgesChange: OnEdgesChange = useCallback(
-    chs => setEdges(eds => applyEdgeChanges(chs, eds)),
+    ch => setEdges(eds => applyEdgeChanges(ch, eds)),
     []
   )
   const onConnect: OnConnect = useCallback(
@@ -73,138 +87,93 @@ export default function FlowComponent() {
     []
   )
 
-  // ---- Demo ArgLLM structure ----
+  // ----------------------------------------
+  // Convert GPT relations → Argument graph
+  // ----------------------------------------
   useEffect(() => {
-    const demoArgs: Argument[] = [
-      {
-        id: 'claim',
-        label: 'Dupilumab treats asthma',
-        tau: 0.5,
-        attackers: ['a1'],
-        supporters: ['a2'],
-      },
-      {
-        id: 'a1',
-        label: 'Limited clinical trials',
-        tau: 0.3,
-      },
-      {
-        id: 'a2',
-        label: 'FDA approval evidence',
-        tau: 0.8,
-      },
-    ]
+    if (!relations || relations.length === 0) return
 
-    const sigma = computeDfQuad(demoArgs)
+    // Collect all nodes
+    const nodeNames = new Set<string>()
+    relations.forEach(r => {
+      nodeNames.add(r.source)
+      nodeNames.add(r.target)
+    })
 
-    // ------------------------------
-    // NODE BACKGROUND COLOR RULE:
-    // green fill when σ > 0.5
-    // red fill when σ <= 0.5
-    // opacity scales with sigma
-    // ------------------------------
+    const argMap: Record<string, Argument> = {}
+    nodeNames.forEach(n => {
+      argMap[n] = {
+        id: n,
+        label: n,
+        tau: 0.5,     // default prior
+        attackers: [],
+        supporters: []
+      }
+    })
+
+    relations.forEach(r => {
+      if (r.type === 'ATTACKS')
+        argMap[r.target].attackers!.push(r.source)
+      else
+        argMap[r.target].supporters!.push(r.source)
+    })
+
+    const args = Object.values(argMap)
+    const sigma = computeDfQuad(args)
+
+    // Colors
     const green = (s: number) => `rgba(78, 148, 79, ${0.35 + s * 0.55})`
     const red   = (s: number) => `rgba(196, 62, 62, ${0.35 + s * 0.55})`
 
-    const n: Node[] = [
-      {
-        id: 'claim',
-        data: { label: `${demoArgs[0].label}\nσ=${sigma['claim'].toFixed(2)}` },
-        position: { x: 300, y: 80 },
-        targetPosition: 'bottom',
-        sourcePosition: 'top',
-        style: {
-          background: sigma['claim'] > 0.5 ? green(sigma['claim']) : red(sigma['claim']),
-          borderRadius: 12,
-          padding: 10,
-          textAlign: 'center',
-          fontWeight: 500,
-          whiteSpace: 'pre-line',
-          transition: 'all 0.6s ease',
-          fontSize: '14px',
-          color: 'black'
-        },
-      },
-      {
-        id: 'a1',
-        data: { label: `${demoArgs[1].label}\nσ=${sigma['a1'].toFixed(2)}` },
-        position: { x: 150, y: 300 },
-        targetPosition: 'bottom',
-        sourcePosition: 'top',
-        style: {
-          background: sigma['a1'] > 0.5 ? green(sigma['a1']) : red(sigma['a1']),
-          borderRadius: 12,
-          padding: 10,
-          textAlign: 'center',
-          fontWeight: 500,
-          whiteSpace: 'pre-line',
-          fontSize: '14px',
-          color: 'black'
-        },
-      },
-      {
-        id: 'a2',
-        data: { label: `${demoArgs[2].label}\nσ=${sigma['a2'].toFixed(2)}` },
-        position: { x: 450, y: 300 },
-        targetPosition: 'bottom',
-        sourcePosition: 'top',
-        style: {
-          background: sigma['a2'] > 0.5 ? green(sigma['a2']) : red(sigma['a2']),
-          borderRadius: 12,
-          padding: 10,
-          textAlign: 'center',
-          fontWeight: 500,
-          whiteSpace: 'pre-line',
-          fontSize: '14px',
-          color: 'black'
-        },
-      },
-    ]
+    // Position layout (simple grid)
+    const nodeArray = Array.from(nodeNames)
+    const nodeObjs: Node[] = nodeArray.map((name, i) => ({
+      id: name,
+      data: { label: `${name}\nσ=${sigma[name].toFixed(2)}` },
+      position: { x: 150 + (i % 4) * 220, y: 100 + Math.floor(i / 4) * 180 },
+      style: {
+        background: sigma[name] > 0.5 ? green(sigma[name]) : red(sigma[name]),
+        borderRadius: 12,
+        padding: 10,
+        textAlign: 'center',
+        fontWeight: 500,
+        whiteSpace: 'pre-line',
+        color: 'black',
+        transition: 'all 0.6s ease',
+      }
+    }))
 
-    const e: Edge[] = [
-      {
-        id: 'a1-claim',
-        source: 'a1',
-        target: 'claim',
-        label: 'attack',
-        labelStyle: { fontSize: 15 },
-        labelShowBg: true,
-        labelBgStyle: {
-          fill: "rgba(255,255,255,0.95)",
-          stroke: "rgba(0,0,0,0.15)",
-          strokeWidth: 0.6,
-          padding: 2,
-          borderRadius: 4
-        },
-        animated: true,
-        style: { stroke: '#c43e3e', strokeWidth: 2 },
-        markerEnd: { type: 'arrowclosed', color: '#c43e3e' },
+    // Edges
+    const edgeObjs: Edge[] = relations.map((r, i) => ({
+      id: `e-${i}`,
+      source: r.source,
+      target: r.target,
+      label: r.type === 'ATTACKS' ? 'attack' : 'support',
+      animated: true,
+      style: {
+        stroke: r.type === 'ATTACKS' ? '#c43e3e' : '#4e944f',
+        strokeWidth: 2
       },
-      {
-        id: 'a2-claim',
-        source: 'a2',
-        target: 'claim',
-        label: 'support',
-        labelStyle: { fontSize: 15 },
-        labelShowBg: true,
-        labelBgStyle: {
-          fill: "rgba(255,255,255,0.95)",
-          stroke: "rgba(0,0,0,0.15)",
-          strokeWidth: 0.6,
-          padding: 2,
-          borderRadius: 4
-        },
-        animated: true,
-        style: { stroke: '#4e944f', strokeWidth: 2 },
-        markerEnd: { type: 'arrowclosed', color: '#4e944f' },
+      markerEnd: {
+        type: 'arrowclosed',
+        color: r.type === 'ATTACKS' ? '#c43e3e' : '#4e944f'
       },
-    ]
+      labelStyle: { fontSize: 15 },
+      labelShowBg: true,
+      labelBgStyle: {
+        fill: "rgba(255,255,255,0.95)",
+        stroke: "rgba(0,0,0,0.15)",
+        strokeWidth: 0.6,
+        padding: 2,
+        borderRadius: 4
+      }
+    }))
 
-    setNodes(n)
-    setEdges(e)
-  }, [])
+    setNodes(nodeObjs)
+    setEdges(edgeObjs)
 
-  // ------------------------------
+  }, [relations])
+
   return (
     <div
       className="fade-in"
@@ -213,9 +182,7 @@ export default function FlowComponent() {
         height: '550px',
         border: '1px solid rgba(0,0,0,0.15)',
         borderRadius: '10px',
-        boxShadow: '0 2px 6px rgba(0,0,0,0.05)',
-        backgroundColor: '#fafafa',
-        animation: 'fadeInSmooth 0.8s ease forwards',
+        backgroundColor: '#fafafa'
       }}
     >
       <ReactFlow
@@ -229,7 +196,6 @@ export default function FlowComponent() {
         zoomOnScroll={false}
         zoomOnPinch={false}
         panOnScroll={false}
-        zoomOnDoubleClick={false}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}

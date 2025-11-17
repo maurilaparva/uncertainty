@@ -16,10 +16,9 @@ import {
 import dagre from 'dagre';
 import { useAtom } from 'jotai';
 import { viewModeAtom } from '../lib/state.ts';
-import FlowComponent from './vis-flow/index.tsx';
 import { Button } from './ui/button.tsx';
 import 'reactflow/dist/style.css';
-// 🔁 REPLACE Phi-3 import with GPT-4 helper:
+
 import { askGpt4Once } from '../lib/openai-client.ts';
 import {
   CustomGraphNode,
@@ -64,9 +63,7 @@ const getLayoutedElements = (
 
 const normalizeQuestion = (q: string) => q.trim().toLowerCase();
 
-// ---- component start ----
 export function Chat({ id, initialMessages }: { id?: string; initialMessages?: Message[] }) {
-  // ✅ Key presence flag for UX + EmptyScreen
   const hasOpenAiKey = !!import.meta.env.VITE_OPENAI_API_KEY;
 
   const [viewMode] = useAtom(viewModeAtom);
@@ -76,11 +73,9 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
   const [layoutDirection, setLayoutDirection] = useState('TB');
   const [isLoading, setIsLoading] = useState(false);
 
-  // ✅ Simple in-memory cache: normalizedQuestion -> answer text
   const [qaCache, setQaCache] = useState<Record<string, string>>({});
 
   const handleBackToHome = useCallback(() => {
-    console.log('↩️ Returning to Home — clearing messages');
     setMessages([]);
     setNodes([]);
     setEdges([]);
@@ -89,100 +84,33 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
   const [previewToken] = useLocalStorage<string | null>('ai-token', null);
   const [serperToken] = useLocalStorage<string | null>('serper-token', null);
 
-  // Debug whenever messages change
   useEffect(() => {
     console.log('📜 Messages updated:', messages);
   }, [messages]);
 
-  // 🧠 Enhanced append() with demo + GPT-4 + caching
+  // -------------------------
+  //   APPEND — GPT-4 Pipeline
+  // -------------------------
   const append = async (msg: Partial<Message> | string) => {
     console.log('🧠 append() received:', msg);
     const userText = typeof msg === 'string' ? msg : msg.content ?? '';
     if (!userText.trim()) return;
 
-    // 🧪 DEMO MODE: Dupilumab example
-    if (userText === '__demo_dupilumab__') {
-      console.log('🧪 DEMO branch triggered');
-
-      const demoQuestion =
-        'Did Dupilumab receive FDA approval for Asthma before Chronic Rhinosinusitis?';
-      const demoParagraph =
-        'Dupilumab was approved by the FDA for Chronic Rhinosinusitis with Nasal Polyps on June 26, 2019. It was later approved for Asthma on October 20, 2022.';
-
-      const fakeTokenUncertainty = [
-        { word: 'Dupilumab', score: 0.8 },
-        { word: 'was', score: 0.1 },
-        { word: 'approved', score: 0.3 },
-        { word: 'by', score: 0.1 },
-        { word: 'the', score: 0.05 },
-        { word: 'FDA', score: 0.9 },
-        { word: 'for', score: 0.15 },
-        { word: 'Chronic', score: 0.4 },
-        { word: 'Rhinosinusitis', score: 0.45 },
-        { word: 'with', score: 0.2 },
-        { word: 'Nasal', score: 0.25 },
-        { word: 'Polyps', score: 0.3 },
-        { word: 'on', score: 0.1 },
-        { word: 'June', score: 0.2 },
-        { word: '26,', score: 0.1 },
-        { word: '2019.', score: 0.05 },
-        { word: 'It', score: 0.1 },
-        { word: 'was', score: 0.15 },
-        { word: 'later', score: 0.2 },
-        { word: 'approved', score: 0.25 },
-        { word: 'for', score: 0.15 },
-        { word: 'Asthma', score: 0.97 },
-        { word: 'on', score: 0.15 },
-        { word: 'October', score: 0.1 },
-        { word: '20,', score: 0.1 },
-        { word: '2022.', score: 0.05 },
-      ];
-
-      const demoAssistant: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: JSON.stringify({
-          type: 'demo',
-          paragraph: demoParagraph,
-          overall_confidence: 0.76,
-          tokens: fakeTokenUncertainty,
-        }),
-      };
-
-      console.log('🧩 demoAssistant created:', demoAssistant);
-
-      setMessages((prev) => {
-        const newMessages = [
-          ...prev,
-          { id: crypto.randomUUID(), role: 'user', content: demoQuestion },
-          demoAssistant,
-        ];
-        console.log('✅ Setting messages to:', newMessages);
-        return newMessages;
-      });
-
-      return;
-    }
-
-    // 🔐 Ensure key exists
     if (!hasOpenAiKey) {
-      toast.error('OpenAI API key is not set in .env (VITE_OPENAI_API_KEY).');
+      toast.error('OpenAI API key missing in .env');
       return;
     }
 
     const normalized = normalizeQuestion(userText);
 
-    // ✅ User message object
     const newUser: Message = {
       id: crypto.randomUUID(),
       role: 'user',
       content: userText,
     };
 
-    // 1️⃣ If we already answered this question, reuse cached answer
+    // If cached → reuse
     if (qaCache[normalized]) {
-      console.log('♻️ Using cached answer for:', normalized);
-
       const cachedAssistant: Message = {
         id: crypto.randomUUID(),
         role: 'assistant',
@@ -193,7 +121,7 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
       return;
     }
 
-    // 2️⃣ Otherwise, call GPT-4 and cache the result
+    // GPT-4 call
     setIsLoading(true);
 
     const newAssistant: Message = {
@@ -202,33 +130,26 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
       content: 'Generating answer…',
     };
 
-    // Add both user + placeholder assistant
     setMessages((prev) => [...prev, newUser, newAssistant]);
 
     try {
-      console.log('⚙️ Calling GPT-4 via askGpt4Once...');
       const res = await askGpt4Once(userText);
-      console.log('✅ GPT-4 response:', res);
 
-      // update messages: replace placeholder content
       setMessages((prev) =>
         prev.map((m) =>
           m.id === newAssistant.id ? { ...m, content: res } : m
         )
       );
 
-      // cache result for this normalized question
       setQaCache((prev) => ({
         ...prev,
         [normalized]: res,
       }));
     } catch (err) {
-      console.error('❌ GPT-4 inference failed:', err);
+      console.error('❌ GPT-4 failed:', err);
       toast.error('GPT-4 inference failed.');
-      // optional: clear the placeholder if error
-      setMessages((prev) =>
-        prev.filter((m) => m.id !== newAssistant.id)
-      );
+
+      setMessages((prev) => prev.filter((m) => m.id !== newAssistant.id));
     } finally {
       setIsLoading(false);
     }
@@ -248,27 +169,30 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
     updateLayout();
   }, [updateLayout]);
 
-  // --- MAIN RENDER ---
+  // ----------------------
+  //     MAIN RENDER
+  // ----------------------
   return (
     <ViewModeProvider>
       <div className="w-full flex justify-center">
         <div className="max-w-4xl w-full rounded-lg border bg-background p-6">
+
           {messages.length ? (
             <>
               <div className="flex justify-start mb-3">
                 <Button
                   variant="ghost"
                   onClick={handleBackToHome}
-                  className="flex items-center space-x-2 text-muted-foreground hover:text-foreground"
+                  className="flex items-center space-x-2"
                 >
                   <span className="text-lg">←</span>
                   <span>Back to Home</span>
                 </Button>
               </div>
 
-              {/* --- Paragraph Mode --- */}
+              {/* -------- PARAGRAPH MODE -------- */}
               {viewMode === 'paragraph' && (
-                <div className="pt-4 md:pt-10 flex justify-center fade-in">
+                <div className="pt-4 md:pt-10 flex justify-center">
                   <div className="max-w-2xl w-full text-center">
                     <ChatList
                       key={messages.map((m) => m.id).join('|')}
@@ -282,29 +206,25 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
                 </div>
               )}
 
-              {/* --- Relation Mode --- */}
+              {/* -------- RELATION MODE -------- */}
               {viewMode === 'relation' && (
                 <div className="pt-4 md:pt-10 fade-in">
                   <ReactFlowProvider>
-                    <FlowComponent
+                    <ChatList
+                      key={messages.map((m) => m.id).join('|')}
+                      messages={messages}
+                      activeStep={0}
                       nodes={nodes}
                       edges={edges}
-                      onNodesChange={onNodesChange}
-                      onEdgesChange={onEdgesChange}
-                      updateLayout={updateLayout}
-                      setLayoutDirection={setLayoutDirection}
-                      isLoading={isLoading}
-                      id={id}
-                      append={append}
-                      activeStep={0}
                     />
+                    <ChatScrollAnchor trackVisibility={isLoading} />
                   </ReactFlowProvider>
                 </div>
               )}
 
-              {/* --- Token Mode --- */}
+              {/* -------- TOKEN MODE -------- */}
               {viewMode === 'token' && (
-                <div className="pt-4 md:pt-10 flex justify-center fade-in">
+                <div className="pt-4 md:pt-10 flex justify-center">
                   <div className="max-w-2xl w-full text-center">
                     <ChatList
                       key={messages.map((m) => m.id).join('|')}
@@ -317,6 +237,7 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
                   </div>
                 </div>
               )}
+
             </>
           ) : (
             <EmptyScreen
@@ -327,6 +248,7 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
               isModelLoaded={hasOpenAiKey}
             />
           )}
+
         </div>
       </div>
     </ViewModeProvider>
