@@ -10,6 +10,9 @@ import ReactFlow, {
 
 import 'reactflow/dist/style.css'
 
+// --------------------------------------------
+// Types
+// --------------------------------------------
 interface Relation {
   source: string
   target: string
@@ -20,9 +23,39 @@ interface Relation {
 interface FlowProps {
   centralClaim: string
   relations: Relation[]
+  overallConfidence: number   // <-- NEW
 }
 
-export default function FlowComponent({ centralClaim, relations }: FlowProps) {
+// --------------------------------------------
+// DF-QuAD HELPERS
+// --------------------------------------------
+function aggregateF(values: number[]): number {
+  if (!values || values.length === 0) return 0
+  const product = values.reduce((acc, v) => acc * Math.abs(1 - v), 1)
+  return 1 - product
+}
+
+function computeFinalClaimConfidence(
+  v0: number,
+  supporters: number[],
+  attackers: number[]
+) {
+  const va = aggregateF(attackers)   // aggregated attack force
+  const vs = aggregateF(supporters)  // aggregated support force
+
+  if (va === vs) return v0
+
+  if (va > vs) {
+    return v0 - (v0 * Math.abs(vs - va))
+  } else {
+    return v0 + ((1 - v0) * Math.abs(vs - va))
+  }
+}
+
+// --------------------------------------------
+// Component
+// --------------------------------------------
+export default function FlowComponent({ centralClaim, relations, overallConfidence }: FlowProps) {
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
 
@@ -32,11 +65,28 @@ export default function FlowComponent({ centralClaim, relations }: FlowProps) {
     const supports = relations.filter(r => r.type === 'SUPPORTS')
     const attacks = relations.filter(r => r.type === 'ATTACKS')
 
-    // UPDATED COLOR PALETTE (professional / neutral)
+    // --------------------------------------------
+    // DF-QuAD: compute final aggregated confidence
+    // --------------------------------------------
+    const supportScores = supports.map(r => r.score)
+    const attackScores = attacks.map(r => r.score)
+
+    const finalConfidence = computeFinalClaimConfidence(
+      overallConfidence,
+      supportScores,
+      attackScores
+    )
+
+    // --------------------------------------------
+    // COLORS
+    // --------------------------------------------
     const centralBlueGray = 'rgba(150, 170, 200, 0.35)'
     const green  = 'rgba(120, 200, 160, 0.25)'
     const red    = 'rgba(230, 120, 120, 0.25)'
 
+    // --------------------------------------------
+    // Base style for all nodes
+    // --------------------------------------------
     const nodeBaseStyle = {
       borderRadius: 12,
       padding: 12,
@@ -44,17 +94,19 @@ export default function FlowComponent({ centralClaim, relations }: FlowProps) {
       boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
       textAlign: 'center' as const,
       whiteSpace: 'pre-line' as const,
-      fontWeight: 400,  // NO MORE BOLD
+      fontWeight: 400,
       color: 'black',
     }
 
     const nodeList: Node[] = []
 
-    // ========== CENTRAL NODE ==========
+    // --------------------------------------------
+    // CENTRAL NODE — now shows aggregated confidence
+    // --------------------------------------------
     nodeList.push({
       id: centralClaim,
-      data: { label: centralClaim },
-      position: { x: 480, y: 0 },   // <- moved a bit left so whole graph centers properly
+      data: { label: `${centralClaim}\n(confidence = ${finalConfidence.toFixed(2)})` },
+      position: { x: 480, y: -60 },
       style: {
         ...nodeBaseStyle,
         background: centralBlueGray,
@@ -64,38 +116,43 @@ export default function FlowComponent({ centralClaim, relations }: FlowProps) {
       sourcePosition: Position.Bottom
     })
 
-    // ========== SUPPORTS (green) ==========
-supports.forEach((rel, i) => {
-  nodeList.push({
-    id: rel.source,
-    data: { label: `${rel.source}\n(uncertainty = ${rel.score.toFixed(2)})` },
-    position: { x: 280, y: 130 + i * 110 },   // ← MOVED MUCH CLOSER
-    style: {
-      ...nodeBaseStyle,
-      background: green,
-    },
-    sourcePosition: Position.Right,
-    targetPosition: Position.Left
-  })
-})
+    // --------------------------------------------
+    // SUPPORTING NODES — green
+    // --------------------------------------------
+    supports.forEach((rel, i) => {
+      nodeList.push({
+        id: rel.source,
+        data: { label: `${rel.source}\n(confidence = ${rel.score.toFixed(2)})` },
+        position: { x: 280, y: 130 + i * 110 },
+        style: {
+          ...nodeBaseStyle,
+          background: green,
+        },
+        sourcePosition: Position.Right,
+        targetPosition: Position.Left
+      })
+    })
 
-// ========== ATTACKS (red) ==========
-attacks.forEach((rel, i) => {
-  nodeList.push({
-    id: rel.source,
-    data: { label: `${rel.source}\n(uncertainty = ${rel.score.toFixed(2)})` },
-    position: { x: 680, y: 130 + i * 110 },  // ← MOVED MUCH CLOSER
-    style: {
-      ...nodeBaseStyle,
-      background: red,
-    },
-    sourcePosition: Position.Left,
-    targetPosition: Position.Right
-  })
-})
+    // --------------------------------------------
+    // ATTACKING NODES — red
+    // --------------------------------------------
+    attacks.forEach((rel, i) => {
+      nodeList.push({
+        id: rel.source,
+        data: { label: `${rel.source}\n(confidence = ${rel.score.toFixed(2)})` },
+        position: { x: 680, y: 130 + i * 110 },
+        style: {
+          ...nodeBaseStyle,
+          background: red,
+        },
+        sourcePosition: Position.Left,
+        targetPosition: Position.Right
+      })
+    })
 
-
-    // ========== EDGES: dotted + arrow + label ==========
+    // --------------------------------------------
+    // EDGES — dotted with labels
+    // --------------------------------------------
     const edgeList: Edge[] = relations.map((rel, i) => ({
       id: `e-${i}`,
       source: rel.source,
@@ -105,7 +162,7 @@ attacks.forEach((rel, i) => {
       style: {
         stroke: 'black',
         strokeWidth: 1.6,
-        strokeDasharray: '4 3'   // ← dotted line restored
+        strokeDasharray: '4 3',
       },
       labelStyle: {
         fontSize: 12.5,
@@ -125,7 +182,7 @@ attacks.forEach((rel, i) => {
 
     setNodes(nodeList)
     setEdges(edgeList)
-  }, [relations, centralClaim])
+  }, [relations, centralClaim, overallConfidence])
 
   return (
     <div
@@ -141,10 +198,9 @@ attacks.forEach((rel, i) => {
       <ReactFlow
         nodes={nodes}
         edges={edges}
-        defaultViewport={{
-          x: 40,    // ← nudged right slightly so graph starts centered
-          y: 0,
-          zoom: 1.55,  // ← stronger default zoom
+        fitView
+        fitViewOptions={{
+          padding: 0.25,
         }}
         minZoom={0.3}
         maxZoom={2.2}

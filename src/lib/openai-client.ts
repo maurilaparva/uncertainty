@@ -39,6 +39,8 @@ Given a question, return STRICT JSON capturing reasoning and uncertainty.
 ### REQUIRED RULES ###
 
 #### ANSWER
+- The FIRST SENTENCE of the FIRST PARAGRAPH must begin with **“Yes,”** or **“No,”** directly answering the user’s question.
+- The “yes” or “no” MUST reflect the same conclusion expressed by the central_claim.
 - Must contain **2–4 paragraphs**.
 - Must be medically accurate and well reasoned.
 
@@ -55,7 +57,8 @@ Given a question, return STRICT JSON capturing reasoning and uncertainty.
 You MUST output a single field:
   "central_claim": "<the main conclusion of the answer>"
 
-- Must be ≤ 12 words.
+- The central_claim MUST begin with either **“Yes,”** or **“No,”** directly answering the user's question.
+- Must be ≤ 12 words total (including the “Yes,” or “No,”).
 - Must clearly answer the user's question.
 - All relations MUST point toward this claim.
 

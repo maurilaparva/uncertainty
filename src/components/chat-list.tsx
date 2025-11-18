@@ -376,6 +376,7 @@ const RenderToken = ({ data }: { data: any }) => {
                   <FlowComponent
                     centralClaim={gptData.central_claim}
                     relations={gptData.relations}
+                    overallConfidence={gptData.overall_confidence} 
                   />
                 </div>
               )}

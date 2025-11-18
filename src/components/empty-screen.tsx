@@ -13,8 +13,8 @@ type EmptyScreenProps = Pick<UseChatHelpers, 'setInput' | 'append'> & {
 
 const exampleMessages = [
   {
-    heading: 'Did Dupilumab receive FDA approval for Asthma before Chronic Rhinosinusitis? (Demo)',
-    message: '__demo_dupilumab__'
+    heading: 'Did Dupilumab receive FDA approval for Asthma before Chronic Rhinosinusitis?',
+    message: 'Did Dupilumab receive FDA approval for Asthma before Chronic Rhinosinusitis?'
   },
   {
     heading: 'Is there more antihistamine in Benadryl than Rhinocort?',
