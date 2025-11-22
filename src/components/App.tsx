@@ -4,7 +4,10 @@ import { toast } from 'react-hot-toast';
 import { type Message } from 'ai/react';
 import React, { useState, useEffect, useCallback } from 'react';
 import { EmptyScreen } from './empty-screen.tsx';
-import { ChatList } from './chat-list.tsx';
+
+import ChatListContainer from './chat-list-container.tsx';
+import WebSearchPanel from './WebSearchPanel.tsx';
+
 import { ViewModeProvider } from './ui/view-mode.tsx';
 import { ReactFlowProvider } from 'reactflow';
 import { ChatScrollAnchor } from './chat-scroll-anchors.tsx';
@@ -20,22 +23,20 @@ import { Button } from './ui/button.tsx';
 import 'reactflow/dist/style.css';
 
 import { askGpt4Once } from '../lib/openai-client.ts';
+import { webSearch } from '../lib/search.ts';   // ← NEW (DuckDuckGo scraper)
+
 import {
   CustomGraphNode,
   CustomGraphEdge
 } from '../lib/types.ts';
 
-// ---- Layout helpers (unchanged) ----
+// ---- Layout Helpers ----
 const dagreGraph = new dagre.graphlib.Graph();
 dagreGraph.setDefaultEdgeLabel(() => ({}));
 const nodeWidth = 172;
 const nodeHeight = 86;
 
-const getLayoutedElements = (
-  nodes: CustomGraphNode[],
-  edges: CustomGraphEdge[],
-  direction = 'TB'
-) => {
+const getLayoutedElements = (nodes, edges, direction = 'TB') => {
   const isHorizontal = direction === 'LR';
   dagreGraph.setGraph({
     rankdir: direction,
@@ -58,22 +59,23 @@ const getLayoutedElements = (
     node.sourcePosition = isHorizontal ? Position.Right : Position.Bottom;
     node.position = { x: n.x - nodeWidth / 2, y: n.y - nodeHeight / 2 };
   });
+
   return { nodes, edges };
 };
 
 const normalizeQuestion = (q: string) => q.trim().toLowerCase();
 
-export function Chat({ id, initialMessages }: { id?: string; initialMessages?: Message[] }) {
+export function Chat({ id, initialMessages }) {
   const hasOpenAiKey = !!import.meta.env.VITE_OPENAI_API_KEY;
 
   const [viewMode] = useAtom(viewModeAtom);
-  const [messages, setMessages] = useState<Message[]>(initialMessages ?? []);
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [layoutDirection, setLayoutDirection] = useState('TB');
+  const [messages, setMessages] = useState(initialMessages ?? []);
+  const [nodes, setNodes] = useNodesState([]);
+  const [edges, setEdges] = useEdgesState([]);
+  const [layoutDirection] = useState('TB');
   const [isLoading, setIsLoading] = useState(false);
 
-  const [qaCache, setQaCache] = useState<Record<string, string>>({});
+  const [qaCache, setQaCache] = useState({});
 
   const handleBackToHome = useCallback(() => {
     setMessages([]);
@@ -81,18 +83,20 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
     setEdges([]);
   }, []);
 
-  const [previewToken] = useLocalStorage<string | null>('ai-token', null);
-  const [serperToken] = useLocalStorage<string | null>('serper-token', null);
+  const [previewToken] = useLocalStorage('ai-token', null);
+  const [serperToken] = useLocalStorage('serper-token', null);
 
   useEffect(() => {
     console.log('📜 Messages updated:', messages);
   }, [messages]);
 
-  // -------------------------
-  //   APPEND — GPT-4 Pipeline
-  // -------------------------
-  const append = async (msg: Partial<Message> | string) => {
+
+  // -----------------------
+  //    append() → GPT-4
+  // -----------------------
+  const append = async (msg) => {
     console.log('🧠 append() received:', msg);
+
     const userText = typeof msg === 'string' ? msg : msg.content ?? '';
     if (!userText.trim()) return;
 
@@ -103,151 +107,106 @@ export function Chat({ id, initialMessages }: { id?: string; initialMessages?: M
 
     const normalized = normalizeQuestion(userText);
 
-    const newUser: Message = {
+    const newUser = {
       id: crypto.randomUUID(),
       role: 'user',
-      content: userText,
+      content: userText
     };
 
-    // If cached → reuse
+    // Cached?
     if (qaCache[normalized]) {
-      const cachedAssistant: Message = {
+      const cachedAssistant = {
         id: crypto.randomUUID(),
         role: 'assistant',
-        content: qaCache[normalized],
+        content: qaCache[normalized]
       };
-
-      setMessages((prev) => [...prev, newUser, cachedAssistant]);
+      setMessages(prev => [...prev, newUser, cachedAssistant]);
       return;
     }
 
-    // GPT-4 call
     setIsLoading(true);
 
-    const newAssistant: Message = {
+    const newAssistant = {
       id: crypto.randomUUID(),
       role: 'assistant',
-      content: 'Generating answer…',
+      content: 'Generating answer…'
     };
 
-    setMessages((prev) => [...prev, newUser, newAssistant]);
+    setMessages(prev => [...prev, newUser, newAssistant]);
 
     try {
       const res = await askGpt4Once(userText);
 
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === newAssistant.id ? { ...m, content: res } : m
-        )
+      setMessages(prev =>
+        prev.map(m => (m.id === newAssistant.id ? { ...m, content: res } : m))
       );
 
-      setQaCache((prev) => ({
-        ...prev,
-        [normalized]: res,
-      }));
+      setQaCache(prev => ({ ...prev, [normalized]: res }));
     } catch (err) {
       console.error('❌ GPT-4 failed:', err);
       toast.error('GPT-4 inference failed.');
-
-      setMessages((prev) => prev.filter((m) => m.id !== newAssistant.id));
+      setMessages(prev => prev.filter(m => m.id !== newAssistant.id));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const updateLayout = useCallback(() => {
-    const { nodes: n, edges: e } = getLayoutedElements(
-      nodes as CustomGraphNode[],
-      edges as CustomGraphEdge[],
-      layoutDirection
-    );
-    setNodes(n);
-    setEdges(e);
-  }, [nodes, edges, layoutDirection]);
 
-  useEffect(() => {
-    updateLayout();
-  }, [updateLayout]);
-
-  // ----------------------
-  //     MAIN RENDER
-  // ----------------------
+  // --------------------------
+  //       MAIN RETURN
+  // --------------------------
   return (
     <ViewModeProvider>
       <div className="w-full flex justify-center">
-        <div className="max-w-4xl w-full rounded-lg border bg-background p-6">
 
-          {messages.length ? (
-            <>
-              <div className="flex justify-start mb-3">
-                <Button
-                  variant="ghost"
-                  onClick={handleBackToHome}
-                  className="flex items-center space-x-2"
-                >
-                  <span className="text-lg">←</span>
-                  <span>Back to Home</span>
-                </Button>
-              </div>
+        {/* Outer container includes space for sidebar */}
+        <div className="max-w-6xl w-full rounded-lg border bg-background p-6 flex">
 
-              {/* -------- PARAGRAPH MODE -------- */}
-              {viewMode === 'paragraph' && (
+          {/* LEFT COLUMN — Chat */}
+          <div className="flex-1">
+
+            {messages.length ? (
+              <>
+                <div className="flex justify-start mb-3">
+                  <Button
+                    variant="ghost"
+                    onClick={handleBackToHome}
+                    className="flex items-center space-x-2"
+                  >
+                    <span className="text-lg">←</span>
+                    <span>Back to Home</span>
+                  </Button>
+                </div>
+
                 <div className="pt-4 md:pt-10 flex justify-center">
                   <div className="max-w-2xl w-full text-center">
-                    <ChatList
+
+                    <ChatListContainer
                       key={messages.map((m) => m.id).join('|')}
                       messages={messages}
                       activeStep={0}
                       nodes={nodes}
                       edges={edges}
                     />
+
                     <ChatScrollAnchor trackVisibility={isLoading} />
                   </div>
                 </div>
-              )}
+              </>
+            ) : (
+              <EmptyScreen
+                setInput={() => {}}
+                id={id!}
+                append={append}
+                initialOpen={!previewToken || !serperToken}
+                isModelLoaded={hasOpenAiKey}
+              />
+            )}
 
-              {/* -------- RELATION MODE -------- */}
-              {viewMode === 'relation' && (
-                <div className="pt-4 md:pt-10 fade-in">
-                  <ReactFlowProvider>
-                    <ChatList
-                      key={messages.map((m) => m.id).join('|')}
-                      messages={messages}
-                      activeStep={0}
-                      nodes={nodes}
-                      edges={edges}
-                    />
-                    <ChatScrollAnchor trackVisibility={isLoading} />
-                  </ReactFlowProvider>
-                </div>
-              )}
+          </div>
 
-              {/* -------- TOKEN MODE -------- */}
-              {viewMode === 'token' && (
-                <div className="pt-4 md:pt-10 flex justify-center">
-                  <div className="max-w-2xl w-full text-center">
-                    <ChatList
-                      key={messages.map((m) => m.id).join('|')}
-                      messages={messages}
-                      activeStep={0}
-                      nodes={nodes}
-                      edges={edges}
-                    />
-                    <ChatScrollAnchor trackVisibility={isLoading} />
-                  </div>
-                </div>
-              )}
-
-            </>
-          ) : (
-            <EmptyScreen
-              setInput={() => {}}
-              id={id!}
-              append={append}
-              initialOpen={!previewToken || !serperToken}
-              isModelLoaded={hasOpenAiKey}
-            />
-          )}
+          {/* RIGHT COLUMN — Web Search Panel */}
+          <WebSearchPanel onSearch={webSearch} />
 
         </div>
       </div>

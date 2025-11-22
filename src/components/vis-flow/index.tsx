@@ -106,7 +106,7 @@ export default function FlowComponent({ centralClaim, relations, overallConfiden
     nodeList.push({
       id: centralClaim,
       data: { label: `${centralClaim}\n(confidence = ${finalConfidence.toFixed(2)})` },
-      position: { x: 480, y: -60 },
+      position: { x: 480, y: -100 },
       style: {
         ...nodeBaseStyle,
         background: centralBlueGray,

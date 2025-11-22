@@ -33,6 +33,9 @@ Given a question, return STRICT JSON capturing reasoning and uncertainty.
   ],
   "relations": [
     { "source": "...", "type": "SUPPORTS" or "ATTACKS", "target": "...", "score": 0.0 }
+  ],
+  "links": [
+    { "url": "...", "title": "..." }
   ]
 }
 
@@ -82,6 +85,22 @@ Rules:
 - A SUPPORTS relation must present evidence that directly strengthens, justifies, or explains why the central_claim is true.
 - An ATTACKS relation must present evidence that directly challenges, contradicts, or weakens the central_claim.
 - Relations MUST be genuine arguments, not unrelated facts or generic statements.
+
+#### SOURCE LINKS
+You MUST output a field:
+  "links": [
+    { "url": "<valid iframe-safe medical URL>", "title": "<short label>" }
+  ]
+
+Rules:
+- Provide 1–3 links.
+- Links must be iframe-safe.
+- NEVER fabricate URLs. If uncertain, return an empty array.
+- Every link must begin with "https://".
+- Titles must be ≤ 10 words.
+- **Every link MUST directly support the central_claim.**
+- Links must NOT support any ATTACKS relation.
+- Links must match known pages only; if uncertain, output: "url": null, "title": null.
 
 #### RELATION UNCERTAINTY RULES
 For each relation, "score" MUST represent how uncertain the model is about that specific supporting or attacking claim.
