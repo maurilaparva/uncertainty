@@ -9,9 +9,6 @@ import ChatListContainer from './chat-list-container.tsx';
 import WebSearchPanel from './WebSearchPanel.tsx';
 import PostTrialSurvey from './PostTrialSurvey.tsx';
 
-// ❌ REMOVE ViewModeProvider here – it was putting Chat
-// in a different Jotai store than its children.
-// import { ViewModeProvider } from './ui/view-mode.tsx';
 import { ChatScrollAnchor } from './chat-scroll-anchors.tsx';
 
 import { useNodesState, useEdgesState } from 'reactflow';
@@ -24,12 +21,17 @@ import 'reactflow/dist/style.css';
 import { askGpt4Once } from '../lib/openai-client.ts';
 import { CustomGraphNode, CustomGraphEdge } from '../lib/types.ts';
 
+// ⭐ Import frozen responses
+import { FROZEN_RESPONSES } from '../lib/frozenResponses.ts';
+
 const normalizeQuestion = (q: string) => q.trim().toLowerCase();
 
 export function Chat({ id, initialMessages }) {
   const hasOpenAiKey = !!import.meta.env.VITE_OPENAI_API_KEY;
 
-  // ✅ This now uses the ONE global Jotai store
+  // Toggle between demo (frozen) mode and live GPT mode
+  const [useFrozen, setUseFrozen] = useState(true);
+
   const [viewMode, setViewMode] = useAtom(viewModeAtom);
 
   const [messages, setMessages] = useState<Message[]>(initialMessages ?? []);
@@ -37,36 +39,27 @@ export function Chat({ id, initialMessages }) {
   const [edges, setEdges] = useEdgesState<CustomGraphEdge>([]);
   const [isLoading, setIsLoading] = useState(false);
 
+  // ❗️IMPORTANT: qaCache must start empty — it stores *strings only*
   const [qaCache, setQaCache] = useState<Record<string, string>>({});
-  const [showSurvey, setShowSurvey] = useState(false);
 
-  // ⭐ Track previous interface when leaving for survey
+  const [showSurvey, setShowSurvey] = useState(false);
   const [previousMode, setPreviousMode] = useState<'paragraph' | 'token' | 'relation' | 'raw'>('paragraph');
 
-  // ⭐ Persistent searches (LOCALSTORAGE)
-  const [savedSearches, setSavedSearches] = useLocalStorage(
-    'recommended-searches',
-    {
-      paragraph_level: [] as string[],
-      token_level: [] as string[],
-      relation_level: [] as string[]
-    }
-  );
+  const [savedSearches, setSavedSearches] = useLocalStorage('recommended-searches', {
+    paragraph_level: [],
+    token_level: [],
+    relation_level: []
+  });
 
   const [previewToken] = useLocalStorage('ai-token', null);
   const [serperToken] = useLocalStorage('serper-token', null);
 
-  // -------------------------------
-  // GPT append logic
-  // -------------------------------
+  // --------------------------------------------------------------------
+  // APPEND: supports demo mode (frozen responses) or live GPT mode
+  // --------------------------------------------------------------------
   const append = async (msg: any) => {
     const userText = typeof msg === 'string' ? msg : msg.content ?? '';
     if (!userText.trim()) return;
-
-    if (!hasOpenAiKey) {
-      toast.error('OpenAI API key missing in .env');
-      return;
-    }
 
     const normalized = normalizeQuestion(userText);
 
@@ -76,7 +69,49 @@ export function Chat({ id, initialMessages }) {
       content: userText
     };
 
-    // 👉 Cached response
+    // ============================================================
+    // DEMO MODE — Use FROZEN_RESPONSES
+    // ============================================================
+    if (useFrozen) {
+      const frozen = FROZEN_RESPONSES[normalized];
+
+      if (!frozen) {
+        toast.error('No frozen response found for this question.');
+        return;
+      }
+
+      console.log('DEMO MODE → using frozen response:', normalized);
+
+      const responseString = JSON.stringify(frozen, null, 2);
+
+      const newAssistant: Message = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: responseString
+      };
+
+      setMessages((prev) => [...prev, newUser, newAssistant]);
+
+      // Save recommended searches
+      if (frozen.recommended_searches) {
+        setSavedSearches(frozen.recommended_searches);
+      }
+
+      // Cache stringified value
+      setQaCache((prev) => ({ ...prev, [normalized]: responseString }));
+
+      return;
+    }
+
+    // ============================================================
+    // LIVE MODE — GPT-4
+    // ============================================================
+    if (!hasOpenAiKey) {
+      toast.error('OpenAI API key missing in .env');
+      return;
+    }
+
+    // Cached live response
     if (qaCache[normalized]) {
       const cachedAssistant: Message = {
         id: crypto.randomUUID(),
@@ -95,22 +130,23 @@ export function Chat({ id, initialMessages }) {
       return;
     }
 
+    // Generate new GPT response
     setIsLoading(true);
 
-    const newAssistant: Message = {
+    const tempAssistant: Message = {
       id: crypto.randomUUID(),
       role: 'assistant',
       content: 'Generating answer…'
     };
 
-    setMessages((prev) => [...prev, newUser, newAssistant]);
+    setMessages((prev) => [...prev, newUser, tempAssistant]);
 
     try {
       const res = await askGpt4Once(userText);
 
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === newAssistant.id ? { ...m, content: res } : m
+          m.id === tempAssistant.id ? { ...m, content: res } : m
         )
       );
 
@@ -123,35 +159,32 @@ export function Chat({ id, initialMessages }) {
         }
       } catch {}
 
-    } catch (err) {
+    } catch {
       toast.error('GPT-4 inference failed.');
-      setMessages((prev) => prev.filter((m) => m.id !== newAssistant.id));
+      setMessages((prev) => prev.filter((m) => m.id !== tempAssistant.id));
     } finally {
       setIsLoading(false);
     }
   };
 
-  // -------------------------------------------------------
-  // Re-extract searches from messages (most recent assistant JSON)
-  // -------------------------------------------------------
+  // --------------------------------------------------------------------
+  // Pull recommended searches from the latest assistant message
+  // --------------------------------------------------------------------
   useEffect(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
       const m = messages[i];
       if (m.role !== 'assistant') continue;
 
       try {
-        const j = JSON.parse(m.content ?? '{}');
-        if (j?.recommended_searches) {
-          setSavedSearches(j.recommended_searches);
+        const json = JSON.parse(m.content ?? '{}');
+        if (json?.recommended_searches) {
+          setSavedSearches(json.recommended_searches);
           return;
         }
-      } catch {
-        // ignore invalid JSON
-      }
+      } catch {}
     }
   }, [messages, setSavedSearches]);
 
-  // ⭐ Clear searches when starting a brand new conversation
   useEffect(() => {
     if (messages.length === 0) {
       setSavedSearches({
@@ -160,35 +193,35 @@ export function Chat({ id, initialMessages }) {
         relation_level: []
       });
     }
-  }, [messages.length, setSavedSearches]);
+  }, [messages.length]);
 
-  // -------------------------------
-  // “Back to Home”
-  // -------------------------------
+  // Back button → go to survey
   const handleBackToHome = useCallback(() => {
     setPreviousMode(viewMode);
     setShowSurvey(true);
   }, [viewMode]);
 
-  // -------------------------------
-  // RENDER
-  // -------------------------------
-  console.log('DEBUG: CURRENT VIEW MODE =', viewMode);
-
   return (
-    // ❌ Removed <ViewModeProvider> – everyone now shares the same jotai store
     <div className="w-full flex justify-center">
       <div className="max-w-6xl w-full rounded-lg border bg-background p-6 flex">
 
         {/* LEFT SIDE */}
         <div className="flex-1">
 
-          {/* Survey Mode */}
+          {/* Toggle button */}
+          <div className="flex justify-end mb-4">
+            <Button
+              variant={useFrozen ? 'secondary' : 'default'}
+              onClick={() => setUseFrozen(!useFrozen)}
+            >
+              {useFrozen ? 'Demo Mode (Frozen Responses)' : 'Live Mode (GPT-4)'}
+            </Button>
+          </div>
+
+          {/* Survey */}
           {showSurvey && (
             <PostTrialSurvey
-              onDone={(results) => {
-                console.log('Post-trial survey results:', results);
-
+              onDone={() => {
                 setShowSurvey(false);
                 setMessages([]);
                 setNodes([]);
@@ -202,17 +235,12 @@ export function Chat({ id, initialMessages }) {
             />
           )}
 
-          {/* Chat View */}
+          {/* Chat view */}
           {!showSurvey && messages.length > 0 && (
             <>
               <div className="flex justify-start mb-3">
-                <Button
-                  variant="ghost"
-                  onClick={handleBackToHome}
-                  className="flex items-center space-x-2"
-                >
-                  <span className="text-lg">←</span>
-                  <span>Back to Home</span>
+                <Button variant="ghost" onClick={handleBackToHome}>
+                  ← Back to Home
                 </Button>
               </div>
 
@@ -221,9 +249,9 @@ export function Chat({ id, initialMessages }) {
                   <ChatListContainer
                     key={messages.map((m) => m.id).join('|')}
                     messages={messages}
-                    activeStep={0}
                     nodes={nodes}
                     edges={edges}
+                    activeStep={0}
                   />
                   <ChatScrollAnchor trackVisibility={isLoading} />
                 </div>
@@ -231,7 +259,7 @@ export function Chat({ id, initialMessages }) {
             </>
           )}
 
-          {/* Empty Screen */}
+          {/* Empty screen */}
           {!showSurvey && messages.length === 0 && (
             <EmptyScreen
               setInput={() => {}}
@@ -243,12 +271,9 @@ export function Chat({ id, initialMessages }) {
           )}
         </div>
 
-        {/* RIGHT SIDE – Web search panel */}
+        {/* RIGHT SIDE */}
         {messages.length > 0 && !showSurvey && (
-          <WebSearchPanel
-            recommended={savedSearches}
-            viewMode={viewMode}
-          />
+          <WebSearchPanel recommended={savedSearches} viewMode={viewMode} />
         )}
       </div>
     </div>
