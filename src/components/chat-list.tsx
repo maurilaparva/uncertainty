@@ -4,8 +4,18 @@ import { useViewMode } from './ui/view-mode';
 import { ChatMessage } from './chat-message';
 import { CustomGraphNode, CustomGraphEdge } from '../lib/types';
 
-import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import React, {
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+  useCallback
+} from 'react';
+
 import FlowComponent from './vis-flow/index.tsx';
+
+// ⭐ NEW: global trial tracking
+import { useTrial } from '../lib/useTrial';
 
 /* ----------------------------------------------------
    Helpers
@@ -45,7 +55,8 @@ const RenderRaw = ({ message }: { message: Message }) => (
 );
 
 /* ----------------------------------------------------
-   PARAGRAPH VIEW — baseline = exact same
+   PARAGRAPH VIEW
+   (baseline uses the same component)
 ---------------------------------------------------- */
 function RenderParagraph({
   data,
@@ -56,7 +67,7 @@ function RenderParagraph({
   disableConfidence?: boolean;
   onDone: () => void;
 }) {
-  const { viewMode } = useViewMode()
+  const { viewMode } = useViewMode();
   const paragraphs = useMemo(() => data.answer.split(/\n\s*\n/), [data.answer]);
 
   const [visibleWordCounts, setVisibleWordCounts] =
@@ -74,7 +85,7 @@ function RenderParagraph({
 
     const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-    // Reset if answer changed
+    // Reset if new question
     if (previousAnswer.current !== data.answer) {
       previousAnswer.current = data.answer;
       setVisibleWordCounts(paragraphs.map(() => 0));
@@ -88,6 +99,7 @@ function RenderParagraph({
 
       for (let p = 0; p < paragraphs.length; p++) {
         if (cancelled) return;
+
         setActiveParagraph(p);
 
         const words = paragraphs[p].split(/\s+/).filter(Boolean);
@@ -109,7 +121,6 @@ function RenderParagraph({
 
       await wait(150);
 
-      // SHOW confidence ONLY in paragraph mode (disableConfidence=false)
       if (!disableConfidence) {
         setShowConfidence(true);
         await wait(300);
@@ -117,7 +128,7 @@ function RenderParagraph({
 
       if (!doneCalled.current) {
         doneCalled.current = true;
-        onDone();
+        onDone(); // ⭐ triggers markAnswerDisplayFinished()
       }
     }
 
@@ -136,7 +147,10 @@ function RenderParagraph({
         const count = visibleWordCounts[pIdx];
 
         return (
-          <p key={pIdx} className="text-[17px] flex flex-wrap gap-1 mb-6 text-black">
+          <p
+            key={pIdx}
+            className="text-[17px] flex flex-wrap gap-1 mb-6 text-black"
+          >
             {words.map((word, i) => (
               <span
                 key={i}
@@ -151,35 +165,34 @@ function RenderParagraph({
         );
       })}
 
-      {/* Confidence bar only allowed if disableConfidence=false */}
       {!disableConfidence && showConfidence && (
-      <div
-        className="fade-in"
-        style={{
-          opacity: viewMode === 'baseline' ? 0 : 1,
-          height: viewMode === 'baseline' ? 0 : 'auto',
-          overflow: viewMode === 'baseline' ? 'hidden' : 'visible',
-          pointerEvents: 'none',
-          position: viewMode === 'baseline' ? 'absolute' : 'static'
-        }}
-      >
-        <div className="mt-3 w-full h-2 bg-neutral-200 rounded-full overflow-hidden shadow-inner">
-          <div
-            className="h-2 rounded-full"
-            style={{
-              backgroundColor: 'rgb(216,180,132)',
-              animation: 'growBar 1.5s ease-out forwards',
-              ['--target-width' as any]:
-                `${(data.overall_confidence ?? 0) * 100}%`
-            }}
-          />
+        <div
+          className="fade-in"
+          style={{
+            opacity: viewMode === 'baseline' ? 0 : 1,
+            height: viewMode === 'baseline' ? 0 : 'auto',
+            overflow: viewMode === 'baseline' ? 'hidden' : 'visible',
+            pointerEvents: 'none',
+            position: viewMode === 'baseline' ? 'absolute' : 'static'
+          }}
+        >
+          <div className="mt-3 w-full h-2 bg-neutral-200 rounded-full overflow-hidden shadow-inner">
+            <div
+              className="h-2 rounded-full"
+              style={{
+                backgroundColor: 'rgb(216,180,132)',
+                animation: 'growBar 1.5s ease-out forwards',
+                ['--target-width' as any]: `${
+                  (data.overall_confidence ?? 0) * 100
+                }%`
+              }}
+            />
+          </div>
+          <p className="text-xs text-gray-600 mt-1 italic">
+            Model confidence: {(data.overall_confidence * 100).toFixed(1)}%
+          </p>
         </div>
-        <p className="text-xs text-gray-600 mt-1 italic">
-          Model confidence: {(data.overall_confidence * 100).toFixed(1)}%
-        </p>
-      </div>
-    )}
-
+      )}
     </div>
   );
 }
@@ -233,7 +246,9 @@ function RenderToken({ data }: { data: any }) {
             const id = globalIndex++;
             const isVisible = id < visibleCount;
 
-            const clean = word.toLowerCase().replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, '');
+            const clean = word
+              .toLowerCase()
+              .replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, '');
 
             const score = scoreMap.get(clean);
             const uncertain = typeof score === 'number';
@@ -271,23 +286,27 @@ function RenderToken({ data }: { data: any }) {
 
 /* ----------------------------------------------------
    AssistantMessage
-   👉 baseline now EXACTLY equals paragraph mode
+   ⭐ modified only to record: when the answer finishes 
 ---------------------------------------------------- */
 function AssistantMessage({ message, gptData, viewMode, renderLink }: any) {
   const [showSources, setShowSources] = useState(false);
+
+  // ⭐ NEW
+  const trial = useTrial();
+
+  const handleDone = useCallback(() => {
+    // ⭐ record when the AI answer finishes rendering
+    trial.markAnswerDisplayFinished();
+
+    if (viewMode !== 'baseline') setShowSources(true);
+  }, [viewMode, trial]);
 
   useEffect(() => {
     setShowSources(false);
   }, [message.id, viewMode]);
 
-  const handleDone = useCallback(() => {
-    if (viewMode !== 'baseline') setShowSources(true);
-  }, [viewMode]);
-
   return (
     <div className="my-6 text-left text-black">
-
-      {/* paragraph view */}
       {viewMode === 'paragraph' && (
         <RenderParagraph
           data={gptData}
@@ -296,7 +315,6 @@ function AssistantMessage({ message, gptData, viewMode, renderLink }: any) {
         />
       )}
 
-      {/* baseline view — NOW IDENTICAL TO PARAGRAPH */}
       {viewMode === 'baseline' && (
         <RenderParagraph
           data={gptData}
@@ -319,7 +337,6 @@ function AssistantMessage({ message, gptData, viewMode, renderLink }: any) {
 
       {viewMode === 'raw' && <RenderRaw message={message} />}
 
-      {/* baseline still hides sources, unless you want it to show them */}
       {viewMode !== 'baseline' &&
         showSources &&
         Array.isArray(gptData.links) &&
@@ -343,6 +360,7 @@ function AssistantMessage({ message, gptData, viewMode, renderLink }: any) {
 
 /* ----------------------------------------------------
    MAIN ChatList
+   ⭐ modified to log source-link clicks
 ---------------------------------------------------- */
 export function ChatList({
   messages,
@@ -355,6 +373,7 @@ export function ChatList({
   setPreviewPos
 }: ChatListProps) {
   const { viewMode } = useViewMode();
+  const trial = useTrial(); // ⭐ NEW
   const labelToColor = useLabelToColorMap(nodes);
 
   if (!messages.length) return null;
@@ -371,6 +390,7 @@ export function ChatList({
   const renderLink = useCallback(
     (link) => {
       if (!link?.url) return null;
+
       return (
         <a
           key={link.url}
@@ -378,6 +398,7 @@ export function ChatList({
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-600 underline hover:opacity-80 text-md"
+          onClick={() => trial.recordExternalLink(link.url)} // ⭐ NEW
           onMouseEnter={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             setPreviewUrl(link.url);
@@ -389,7 +410,7 @@ export function ChatList({
         </a>
       );
     },
-    [setPreviewPos, setPreviewUrl]
+    [setPreviewPos, setPreviewUrl, trial]
   );
 
   return (
