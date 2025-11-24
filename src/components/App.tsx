@@ -39,17 +39,21 @@ export function Chat({ id, initialMessages }) {
   const [edges, setEdges] = useEdgesState<CustomGraphEdge>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ❗️IMPORTANT: qaCache must start empty — it stores *strings only*
+  // Cache only stringified responses
   const [qaCache, setQaCache] = useState<Record<string, string>>({});
 
   const [showSurvey, setShowSurvey] = useState(false);
-  const [previousMode, setPreviousMode] = useState<'paragraph' | 'token' | 'relation' | 'raw'>('paragraph');
+  const [previousMode, setPreviousMode] =
+    useState<'paragraph' | 'token' | 'relation' | 'raw'>('paragraph');
 
-  const [savedSearches, setSavedSearches] = useLocalStorage('recommended-searches', {
-    paragraph_level: [],
-    token_level: [],
-    relation_level: []
-  });
+  const [savedSearches, setSavedSearches] = useLocalStorage(
+    'recommended-searches',
+    {
+      paragraph_level: [],
+      token_level: [],
+      relation_level: []
+    }
+  );
 
   const [previewToken] = useLocalStorage('ai-token', null);
   const [serperToken] = useLocalStorage('serper-token', null);
@@ -82,7 +86,8 @@ export function Chat({ id, initialMessages }) {
 
       console.log('DEMO MODE → using frozen response:', normalized);
 
-      const responseString = JSON.stringify(frozen, null, 2);
+      // ⭐ Fix: ALWAYS stringify
+      const responseString = JSON.stringify(frozen);
 
       const newAssistant: Message = {
         id: crypto.randomUUID(),
@@ -92,14 +97,11 @@ export function Chat({ id, initialMessages }) {
 
       setMessages((prev) => [...prev, newUser, newAssistant]);
 
-      // Save recommended searches
       if (frozen.recommended_searches) {
         setSavedSearches(frozen.recommended_searches);
       }
 
-      // Cache stringified value
       setQaCache((prev) => ({ ...prev, [normalized]: responseString }));
-
       return;
     }
 
@@ -111,7 +113,7 @@ export function Chat({ id, initialMessages }) {
       return;
     }
 
-    // Cached live response
+    // Use cached response
     if (qaCache[normalized]) {
       const cachedAssistant: Message = {
         id: crypto.randomUUID(),
@@ -130,7 +132,7 @@ export function Chat({ id, initialMessages }) {
       return;
     }
 
-    // Generate new GPT response
+    // Live inference
     setIsLoading(true);
 
     const tempAssistant: Message = {
@@ -142,33 +144,38 @@ export function Chat({ id, initialMessages }) {
     setMessages((prev) => [...prev, newUser, tempAssistant]);
 
     try {
-      const res = await askGpt4Once(userText);
+      const raw = await askGpt4Once(userText);
+
+      // ⭐ Force result to always be string
+      const resString =
+        typeof raw === 'string' ? raw : JSON.stringify(raw);
 
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === tempAssistant.id ? { ...m, content: res } : m
+          m.id === tempAssistant.id ? { ...m, content: resString } : m
         )
       );
 
-      setQaCache((prev) => ({ ...prev, [normalized]: res }));
+      setQaCache((prev) => ({ ...prev, [normalized]: resString }));
 
       try {
-        const json = JSON.parse(res);
+        const json = JSON.parse(resString);
         if (json?.recommended_searches) {
           setSavedSearches(json.recommended_searches);
         }
       } catch {}
-
     } catch {
       toast.error('GPT-4 inference failed.');
-      setMessages((prev) => prev.filter((m) => m.id !== tempAssistant.id));
+      setMessages((prev) =>
+        prev.filter((m) => m.id !== tempAssistant.id)
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
   // --------------------------------------------------------------------
-  // Pull recommended searches from the latest assistant message
+  // Pull recommended searches from latest assistant message
   // --------------------------------------------------------------------
   useEffect(() => {
     for (let i = messages.length - 1; i >= 0; i--) {
@@ -207,18 +214,17 @@ export function Chat({ id, initialMessages }) {
 
         {/* LEFT SIDE */}
         <div className="flex-1">
-
-          {/* Toggle button */}
           <div className="flex justify-end mb-4">
             <Button
               variant={useFrozen ? 'secondary' : 'default'}
               onClick={() => setUseFrozen(!useFrozen)}
             >
-              {useFrozen ? 'Demo Mode (Frozen Responses)' : 'Live Mode (GPT-4)'}
+              {useFrozen
+                ? 'Demo Mode (Frozen Responses)'
+                : 'Live Mode (GPT-4)'}
             </Button>
           </div>
 
-          {/* Survey */}
           {showSurvey && (
             <PostTrialSurvey
               onDone={() => {
@@ -235,7 +241,6 @@ export function Chat({ id, initialMessages }) {
             />
           )}
 
-          {/* Chat view */}
           {!showSurvey && messages.length > 0 && (
             <>
               <div className="flex justify-start mb-3">
@@ -259,7 +264,6 @@ export function Chat({ id, initialMessages }) {
             </>
           )}
 
-          {/* Empty screen */}
           {!showSurvey && messages.length === 0 && (
             <EmptyScreen
               setInput={() => {}}
@@ -272,9 +276,14 @@ export function Chat({ id, initialMessages }) {
         </div>
 
         {/* RIGHT SIDE */}
-        {messages.length > 0 && !showSurvey && (
-          <WebSearchPanel recommended={savedSearches} viewMode={viewMode} />
-        )}
+        {messages.length > 0 &&
+          !showSurvey &&
+          viewMode !== 'baseline' && (
+            <WebSearchPanel
+              recommended={savedSearches}
+              viewMode={viewMode}
+            />
+          )}
       </div>
     </div>
   );

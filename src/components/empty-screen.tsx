@@ -103,6 +103,7 @@ export function EmptyScreen({
               onChange={(e) => setViewMode(e.target.value as any)}
               className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition"
             >
+              <option value="baseline">Baseline</option>
               <option value="paragraph">Paragraph-Level</option>
               <option value="relation">Relation-Level</option>
               <option value="token">Token-Level</option>

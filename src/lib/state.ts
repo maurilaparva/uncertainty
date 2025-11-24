@@ -8,4 +8,5 @@ export const backendDataAtom = atom({} as BackendData)
 export const keywordsListAnswerAtom = atom([] as string[])
 export const keywordsListQuestionAtom = atom([] as string[])
 export const gptTriplesAtom = atom([] as string[][])
-export const viewModeAtom = atom<'paragraph' | 'relation' | 'token' | 'raw'>('paragraph')
+export const viewModeAtom = atom<'baseline' | 'paragraph' | 'token' | 'relation' | 'raw'>('baseline');
+
