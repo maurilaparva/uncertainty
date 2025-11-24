@@ -221,3 +221,61 @@ button:focus-visible {
 .fade-in {
   animation: fadeInSmooth 0.8s ease forwards;
 }
+/* ---------------------------------------------------
+   CUSTOM RANGE SLIDER (two-tone track + custom thumb)
+--------------------------------------------------- */
+
+input[type="range"] {
+  -webkit-appearance: none;
+  width: 100%;
+  background: transparent;
+}
+
+/* Webkit (Chrome, Edge, Safari) track */
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 8px;
+  border-radius: 4px;
+  background: linear-gradient(
+    to right,
+    var(--fill) 0%,
+    var(--fill) calc((var(--value) - var(--min)) / (var(--max) - var(--min)) * 100%),
+    var(--track) calc((var(--value) - var(--min)) / (var(--max) - var(--min)) * 100%),
+    var(--track) 100%
+  );
+}
+
+/* Webkit thumb */
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: #bfa88f; /* beige thumb color */
+  border: 2px solid #ffffff;
+  margin-top: -5px;
+  cursor: pointer;
+}
+
+/* Firefox track */
+input[type="range"]::-moz-range-track {
+  height: 8px;
+  border-radius: 4px;
+  background-color: var(--track);
+}
+
+/* Firefox filled portion */
+input[type="range"]::-moz-range-progress {
+  height: 8px;
+  background-color: var(--fill);
+  border-radius: 4px;
+}
+
+/* Firefox thumb */
+input[type="range"]::-moz-range-thumb {
+  height: 18px;
+  width: 18px;
+  border-radius: 50%;
+  background: #bfa88f;
+  border: 2px solid #ffffff;
+  cursor: pointer;
+}

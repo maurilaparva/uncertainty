@@ -8,16 +8,6 @@ import React, { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import FlowComponent from './vis-flow/index.tsx';
 
 /* ----------------------------------------------------
-   Utility
----------------------------------------------------- */
-const stripCategories = (s: string) =>
-  s
-    .replace(/\s*\|\|\s*\[[\s\S]*$|\s*\|\s*\[[\s\S]*$/g, '')
-    .replace(/\s*,\s*"(?:[^"\\]|\\.)+"\s*(?:,\s*"(?:[^"\\]|\\.)+"\s*)*\]?$/g, '')
-    .replace(/\|(?!\s*\[)[^,.;:\n)\]]+/g, '')
-    .trim();
-
-/* ----------------------------------------------------
    Props
 ---------------------------------------------------- */
 export interface ChatListProps {
@@ -27,14 +17,11 @@ export interface ChatListProps {
   edges: CustomGraphEdge[];
   clickedNode?: any;
 
-  // From ChatListContainer
   previewUrl: string | null;
   previewPos: { x: number; y: number };
   setPreviewUrl: (u: string | null) => void;
   setPreviewPos: (p: { x: number; y: number }) => void;
 
-  // These are now OPTIONAL and ignored for animation,
-  // kept only so the container doesn't break.
   sourcesVisible?: Record<string, boolean>;
   markSourcesVisible?: (id: string) => void;
 }
@@ -60,13 +47,13 @@ const tryParseGptJson = (msg: any) => {
   if (typeof msg !== 'string') return null;
   try {
     const parsed = JSON.parse(msg);
-    if (parsed && typeof parsed.answer === 'string') return parsed;
+    return parsed;   // ⭐ FULL JSON — KEEP EVERYTHING
   } catch (_) {}
   return null;
 };
 
 /* ----------------------------------------------------
-   Hover preview component
+   Hover preview
 ---------------------------------------------------- */
 function LinkPreview({
   url,
@@ -78,12 +65,7 @@ function LinkPreview({
   return (
     <div
       className="fixed z-50 bg-white border shadow-xl rounded-md p-2"
-      style={{
-        top: position.y,
-        left: position.x,
-        width: 320,
-        height: 240
-      }}
+      style={{ top: position.y, left: position.x, width: 320, height: 240 }}
     >
       <iframe
         src={url}
@@ -132,7 +114,6 @@ function RenderParagraph({
     let cancelled = false;
     const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-    // Reset animation when answer actually changes
     if (previousAnswer.current !== data.answer) {
       previousAnswer.current = data.answer;
       setVisibleWordCounts(paragraphs.map(() => 0));
@@ -142,7 +123,6 @@ function RenderParagraph({
     }
 
     async function animate() {
-      // Only animate once per answer
       if (doneCalled.current) return;
 
       for (let p = 0; p < paragraphs.length; p++) {
@@ -320,9 +300,7 @@ function RenderToken({ data }: { data: any }) {
 }
 
 /* ----------------------------------------------------
-   AssistantMessage wrapper
-   - Manages showSources per message
-   - This is what prevents animation from restarting
+   AssistantMessage
 ---------------------------------------------------- */
 function AssistantMessage({
   message,
@@ -337,7 +315,6 @@ function AssistantMessage({
 }) {
   const [showSources, setShowSources] = useState(false);
 
-  // Reset sources when message or viewMode changes
   useEffect(() => {
     setShowSources(false);
   }, [message.id, viewMode]);
@@ -346,7 +323,6 @@ function AssistantMessage({
     setShowSources(true);
   }, []);
 
-  // For non-paragraph modes, reveal sources after a short delay
   useEffect(() => {
     if (viewMode === 'paragraph') return;
 
@@ -378,18 +354,26 @@ function AssistantMessage({
 
       {viewMode === 'raw' && <RenderRaw message={message} />}
 
-      {showSources && Array.isArray(gptData.links) && gptData.links.length > 0 && (
-        <div className="mt-6 fade-in">
-          <p className="text-[17px] font-semibold mb-1">Sources</p>
-          <div className="space-y-2">
-            {gptData.links.map((lnk: any) => (
-              <div key={lnk.url} className="pl-1">
-                {renderLink(lnk)}
-              </div>
-            ))}
+      {showSources &&
+        Array.isArray(gptData.links) &&
+        gptData.links.length > 0 && (
+          <div className="mt-8 fade-in">
+            <h1
+              className="text-base font-semibold text-gray-900 mb-2"
+              style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+            >
+              Sources
+            </h1>
+
+            <ul className="space-y-2">
+              {gptData.links.map((lnk: any) => (
+                <li key={lnk.url} className="ml-1">
+                  {renderLink(lnk)}
+                </li>
+              ))}
+            </ul>
           </div>
-        </div>
-      )}
+        )}
     </div>
   );
 }
@@ -414,7 +398,6 @@ export function ChatList({
 
   if (!messages.length) return null;
 
-  // Parse GPT JSON *once* per messages change
   const parsedMessages = useMemo(
     () =>
       messages.map((m) => ({
@@ -425,9 +408,6 @@ export function ChatList({
     [messages]
   );
 
-  /* ---------------------------
-     Render hoverable link
-  --------------------------- */
   const renderLink = useCallback(
     (link: { url: string; title: string }) => {
       if (!link?.url) return null;
@@ -472,11 +452,7 @@ export function ChatList({
         return (
           <ChatMessage
             key={id}
-            message={
-              message.role === 'assistant'
-                ? { ...message, content: stripCategories(message.content) }
-                : message
-            }
+            message={message}  // ⭐ STOP STRIPPING JSON
             nodes={message.role === 'user' ? [] : nodes}
             edges={message.role === 'user' ? [] : edges}
             clickedNode={clickedNode}

@@ -1,72 +1,79 @@
 'use client';
-import React, { useState } from 'react';
-
-export interface SearchResult {
-  title: string;
-  link: string;
-  snippet: string;
-}
+import React from 'react';
 
 export default function WebSearchPanel({
-  onSearch
+  recommended,
+  viewMode
 }: {
-  onSearch: (q: string) => Promise<SearchResult[]>;
+  recommended: {
+    paragraph_level?: string[];
+    token_level?: string[];
+    relation_level?: string[];
+  };
+  viewMode: "paragraph" | "token" | "relation" | "raw";
 }) {
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
+  // pick ONLY the relevant list based on the viewMode
+  const levelMap = {
+    paragraph: recommended?.paragraph_level ?? [],
+    token: recommended?.token_level ?? [],
+    relation: recommended?.relation_level ?? [],
+    raw: []
+  };
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!query.trim()) return;
-    setLoading(true);
+  const activeQueries = levelMap[viewMode] ?? [];
 
-    const res = await onSearch(query);
-    setResults(res);
+  // description text depending on interface
+  const descriptionMap = {
+    paragraph:
+      "These searches are generated from the overall reasoning to help verify the answer.",
+    token:
+      "These searches are generated from tokens with high uncertainty (≥ 0.8).",
+    relation:
+      "These searches are based on the supporting and attacking argument nodes.",
+    raw: "No uncertainty-based searches are available in raw mode."
+  };
 
-    setLoading(false);
+  function openQuery(q: string) {
+    const encoded = encodeURIComponent(q);
+    window.open(`https://www.google.com/search?q=${encoded}`, '_blank');
   }
 
   return (
-    <div className="hidden lg:block w-80 border-l border-neutral-200 pl-4">
-      <h2 className="text-lg font-semibold mb-2">Web Search</h2>
+    <div className="hidden lg:block w-80 border-l border-neutral-200 pl-4 ml-6">
 
-      <form onSubmit={handleSearch} className="mb-3">
-        <div className="p-3 border rounded-md bg-white hover:bg-neutral-50 transition">
-            <a
-                href={r.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[15px] font-semibold text-blue-700"
-            >
-                {r.title}
-            </a>
-            <p className="text-[13px] text-gray-600 mt-1 leading-snug">
-                {r.snippet}
-            </p>
-            </div>
-      </form>
+      {/* TITLE */}
+      <h1
+        className="text-xl font-semibold text-gray-900"
+        style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+      >
+        Recommended Web Searches
+      </h1>
 
-      {loading && (
-        <p className="text-sm text-gray-500">Searching…</p>
+      {/* Description */}
+      <p className="text-xs text-gray-600 mb-4" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+        {descriptionMap[viewMode]}
+      </p>
+
+      {/* If nothing available */}
+      {activeQueries.length === 0 && (
+        <p className="text-xs text-gray-500 italic">
+          No recommended searches available for this interface.
+        </p>
       )}
 
-      <div className="space-y-3">
-        {results.map((r, i) => (
-          <div
-            key={i}
-            className="p-2 border rounded hover:bg-neutral-50 transition"
+      {/* Active Queries */}
+      <div className="space-y-2">
+        {activeQueries.map((q, idx) => (
+          <button
+            key={idx}
+            onClick={() => openQuery(q)}
+            className="
+              w-full text-left text-sm p-2 rounded border
+              hover:bg-neutral-50 transition
+            "
           >
-            <a
-              href={r.link}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 font-medium"
-            >
-              {r.title}
-            </a>
-            <p className="text-xs text-gray-600 mt-1">{r.snippet}</p>
-          </div>
+            {q}
+          </button>
         ))}
       </div>
     </div>

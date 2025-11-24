@@ -28,15 +28,27 @@ Given a question, return STRICT JSON capturing reasoning and uncertainty.
 {
   "answer": "<multi-paragraph reasoning>",
   "overall_confidence": 0.0,
+
   "token_uncertainty": [
-    { "token": "...", "score": 0.0 }
+    { "token": "word", "score": 0.0 }
   ],
+
+  "central_claim": "Yes, ...",
+
   "relations": [
-    { "source": "...", "type": "SUPPORTS" or "ATTACKS", "target": "...", "score": 0.0 }
+    { "source": "...", "type": "SUPPORTS", "target": "central_claim", "score": 0.0 },
+    { "source": "...", "type": "ATTACKS", "target": "central_claim", "score": 0.0 }
   ],
+
   "links": [
-    { "url": "...", "title": "..." }
-  ]
+    { "url": "https://...", "title": "..." }
+  ],
+
+  "recommended_searches": {
+    "paragraph_level": ["...","..."],
+    "token_level": ["...","..."],
+    "relation_level": ["...","..."]
+  }
 }
 
 ### REQUIRED RULES ###
@@ -118,6 +130,36 @@ Rules:
 No two relation scores may be identical.
 Each score must reflect the differing strength of evidence.
 If you cannot produce an equal number of SUPPORTS and ATTACKS, you must adjust or rewrite the arguments until the counts match.
+
+#### RECOMMENDED WEB SEARCHES
+You MUST output a field:
+
+"recommended_searches": {
+  "paragraph_level": ["<search query 1>", "<search query 2>", ...],
+  "token_level": ["<query from high-uncertainty tokens>"],
+  "relation_level": ["<query from support/attack relations>"]
+}
+
+Rules:
+
+• paragraph_level:
+  - 2–4 general factual searches that help verify the answer.
+  - Should not depend on token or relation uncertainty.
+
+• token_level:
+  - MUST be generated from the tokens listed in "token_uncertainty".
+  - For each uncertain token, create a real-world medical search query.
+  - 2–5 items.
+
+• relation_level:
+  - MUST be based on the SUPPORTS and ATTACKS arguments.
+  - Each search should correspond to a claim that would strengthen or weaken the argument.
+  - 2–6 items.
+
+All search strings must be short (≤ 12 words).
+All must be real queries a human might type into Google.
+
+This field is REQUIRED.
 
 #### JSON RULES
 - Must output VALID JSON ONLY.
