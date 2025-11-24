@@ -12,7 +12,6 @@ export default function WebSearchPanel({
   };
   viewMode: "paragraph" | "token" | "relation" | "raw";
 }) {
-  // pick ONLY the relevant list based on the viewMode
   const levelMap = {
     paragraph: recommended?.paragraph_level ?? [],
     token: recommended?.token_level ?? [],
@@ -22,7 +21,6 @@ export default function WebSearchPanel({
 
   const activeQueries = levelMap[viewMode] ?? [];
 
-  // description text depending on interface
   const descriptionMap = {
     paragraph:
       "These searches are generated from the overall reasoning to help verify the answer.",
@@ -41,35 +39,39 @@ export default function WebSearchPanel({
   return (
     <div className="hidden lg:block w-80 border-l border-neutral-200 pl-4 ml-6">
 
-      {/* TITLE */}
-      <h1
-        className="text-xl font-semibold text-gray-900"
-        style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
-      >
+      <h1 className="text-xl font-semibold text-gray-900 font-inter mb-1">
         Recommended Web Searches
       </h1>
 
-      {/* Description */}
-      <p className="text-xs text-gray-600 mb-4" style={{ fontFamily: 'Inter, system-ui, sans-serif' }}>
+      <p className="text-xs text-gray-600 mb-4 font-inter">
         {descriptionMap[viewMode]}
       </p>
 
-      {/* If nothing available */}
       {activeQueries.length === 0 && (
         <p className="text-xs text-gray-500 italic">
           No recommended searches available for this interface.
         </p>
       )}
 
-      {/* Active Queries */}
       <div className="space-y-2">
         {activeQueries.map((q, idx) => (
           <button
             key={idx}
             onClick={() => openQuery(q)}
             className="
-              w-full text-left text-sm p-2 rounded border
-              hover:bg-neutral-50 transition
+              w-full text-left text-sm
+              px-3 py-2 rounded-lg border border-neutral-200
+              bg-white text-gray-800
+              shadow-sm
+
+              hover:shadow-md
+              hover:bg-neutral-50
+              hover:-translate-y-[2px]
+
+              active:translate-y-[0px]
+              active:shadow-sm
+
+              transition-all duration-200 ease-out
             "
           >
             {q}
