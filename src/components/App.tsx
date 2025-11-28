@@ -30,36 +30,53 @@ const normalizeQuestion = (q: string) =>
   q
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s]/g, '')       // remove punctuation
-    .replace(/\s+/g, ' ');         // collapse multiple spaces
+    .replace(/[^\w\s]/g, '') // remove punctuation
+    .replace(/\s+/g, ' ');   // collapse multiple spaces
 
 /* =========================================================================
    TRUE_TABLE (normalized keys, NO PUNCTUATION)
    ========================================================================= */
 const TRUE_TABLE: Record<string, { gt: 'yes' | 'no'; ai: 'yes' | 'no' }> = {
-  "did dupilumab receive fda approval for asthma before chronic rhinosinusitis":
-    { gt: "yes", ai: "no" },
+  'did dupilumab receive fda approval for asthma before chronic rhinosinusitis': {
+    gt: 'yes',
+    ai: 'no',
+  },
 
-  "is there more antihistamine in benadryl than rhinocort":
-    { gt: "yes", ai: "no" },
+  'is there more antihistamine in benadryl than rhinocort': {
+    gt: 'yes',
+    ai: 'no',
+  },
 
-  "is deep vein thrombosis a common side effect of ocella":
-    { gt: "no", ai: "yes" },
+  'is deep vein thrombosis a common side effect of ocella': {
+    gt: 'no',
+    ai: 'yes',
+  },
 
-  "is spironolactone an fdaadproved drug for treating acne":
-    { gt: "no", ai: "yes" },
+  // fixed typo to match normalized user question
+  'is spironolactone an fdaapproved drug for treating acne': {
+    gt: 'no',
+    ai: 'yes',
+  },
 
-  "are both simvastatin and ambien drugs recommended to be taken at night":
-    { gt: "yes", ai: "yes" },
+  'are both simvastatin and ambien drugs recommended to be taken at night': {
+    gt: 'yes',
+    ai: 'yes',
+  },
 
-  "is uveitis a common symptom of ankylosing spondylitis":
-    { gt: "yes", ai: "yes" },
+  'is uveitis a common symptom of ankylosing spondylitis': {
+    gt: 'yes',
+    ai: 'yes',
+  },
 
-  "is fever a common symptom of jock itch":
-    { gt: "no", ai: "no" },
+  'is fever a common symptom of jock itch': {
+    gt: 'no',
+    ai: 'no',
+  },
 
-  "can an adult who has not had chickenpox get shingles":
-    { gt: "no", ai: "no" }
+  'can an adult who has not had chickenpox get shingles': {
+    gt: 'no',
+    ai: 'no',
+  },
 };
 
 /* =========================================================================
@@ -106,7 +123,7 @@ function ChatInner({ id, initialMessages }) {
      ========================================================================= */
   async function submitTrialToSheet(surveyData) {
     const WEB_APP_URL =
-      "https://script.google.com/macros/s/AKfycbw3x92gcd2Fov1j57tF-grx-bBnxpCuI_OI6y4j5MbCppRhw_RKTqf68_y9CN8VaBWz/exec";
+      'https://script.google.com/macros/s/AKfycbw3x92gcd2Fov1j57tF-grx-bBnxpCuI_OI6y4j5MbCppRhw_RKTqf68_y9CN8VaBWz/exec';
 
     const body = {
       participantId: trial.participantId,
@@ -116,30 +133,30 @@ function ChatInner({ id, initialMessages }) {
       finalAnswer: surveyData.finalAnswer,
       ConfidenceAI: surveyData.aiConfidence,
       ConfidenceAnswer: surveyData.selfConfidence,
-      UseAI: surveyData.useAI ? "TRUE" : "FALSE",
-      UseLink: surveyData.useLink ? "TRUE" : "FALSE",
-      UseInternet: surveyData.useInternet ? "TRUE" : "FALSE",
+      UseAI: surveyData.useAI ? 'TRUE' : 'FALSE',
+      UseLink: surveyData.useLink ? 'TRUE' : 'FALSE',
+      UseInternet: surveyData.useInternet ? 'TRUE' : 'FALSE',
 
-      Correct: trial.correctness ? "TRUE" : "FALSE",
-      Agree: trial.agreement ? "TRUE" : "FALSE",
+      Correct: trial.correctness ? 'TRUE' : 'FALSE',
+      Agree: trial.agreement ? 'TRUE' : 'FALSE',
       Time: trial.computeResponseTime() / 1000,
-      LinkClick: trial.linkClickCount > 0 ? "TRUE" : "FALSE",
+      LinkClick: trial.linkClickCount > 0 ? 'TRUE' : 'FALSE',
 
       RawData: {
         surveyData,
-        trialState: trial
-      }
+        trialState: trial,
+      },
     };
 
     try {
       await fetch(`${WEB_APP_URL}?t=${Date.now()}`, {
-        method: "POST",
-        mode: "no-cors",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
       });
     } catch (err) {
-      console.error("Failed to submit trial:", err);
+      console.error('Failed to submit trial:', err);
     }
   }
 
@@ -147,30 +164,37 @@ function ChatInner({ id, initialMessages }) {
      APPEND (user submits question)
      ========================================================================= */
   const append = async (msg: any) => {
-    const userText = typeof msg === "string" ? msg : msg.content ?? "";
+    const userText = typeof msg === 'string' ? msg : msg.content ?? '';
     if (!userText.trim()) return;
 
     const normalized = normalizeQuestion(userText);
     trial.setQuestionId(normalized);
 
-    // Look up correctness info
+    // Look up correctness + AI label from table
     const entry = TRUE_TABLE[normalized];
+    let aiLabel: 'yes' | 'no' | null = null;
+
     if (entry) {
-      trial.correctAnswer = entry.gt;
-      trial.aiAnswer = entry.ai;
+      aiLabel = entry.ai;
+      // store ground truth + AI label in trial context state
+      trial.setCorrectAnswer(entry.gt);
+      trial.setAiAnswer(entry.ai);
+    } else {
+      toast.error('Question not found in TRUE_TABLE');
+      return;
     }
 
     const newUser: Message = {
       id: crypto.randomUUID(),
-      role: "user",
-      content: userText
+      role: 'user',
+      content: userText,
     };
 
-    /* DEMO MODE */
+    /* DEMO MODE (frozen responses) */
     if (useFrozen) {
       const frozen = FROZEN_RESPONSES[normalized];
       if (!frozen) {
-        toast.error("No frozen response found.");
+        toast.error('No frozen response found.');
         return;
       }
 
@@ -178,8 +202,8 @@ function ChatInner({ id, initialMessages }) {
 
       const newAssistant: Message = {
         id: crypto.randomUUID(),
-        role: "assistant",
-        content: resString
+        role: 'assistant',
+        content: resString,
       };
 
       if (frozen.recommended_searches) {
@@ -191,27 +215,37 @@ function ChatInner({ id, initialMessages }) {
       return;
     }
 
-    /* LIVE MODE */
+    /* LIVE MODE (GPT-4o-mini with forced label) */
     if (!hasOpenAiKey) {
-      toast.error("Missing OpenAI key.");
+      toast.error('Missing OpenAI key.');
       return;
     }
 
+    // Use cached JSON if we already asked GPT for this question+label
     if (qaCache[normalized]) {
+      const cached = qaCache[normalized];
+
       const cachedAssistant: Message = {
         id: crypto.randomUUID(),
-        role: "assistant",
-        content: qaCache[normalized]
+        role: 'assistant',
+        content: cached,
       };
 
       try {
-        const json = JSON.parse(qaCache[normalized]);
+        const json = JSON.parse(cached);
         if (json?.recommended_searches) {
           setSavedSearches(json.recommended_searches);
         }
-      } catch {}
+      } catch {
+        // ignore parse failures here; we still show the raw content
+      }
 
       setMessages((prev) => [...prev, newUser, cachedAssistant]);
+      return;
+    }
+
+    if (!aiLabel) {
+      toast.error('Internal error: missing AI label for this question.');
       return;
     }
 
@@ -219,15 +253,15 @@ function ChatInner({ id, initialMessages }) {
 
     const tempAssistant: Message = {
       id: crypto.randomUUID(),
-      role: "assistant",
-      content: "Generating answer…"
+      role: 'assistant',
+      content: 'Generating answer…',
     };
 
     setMessages((prev) => [...prev, newUser, tempAssistant]);
 
     try {
-      const raw = await askGpt4Once(userText, trial.aiAnswer);
-      const resString = typeof raw === "string" ? raw : JSON.stringify(raw);
+      const raw = await askGpt4Once(userText, aiLabel);
+      const resString = typeof raw === 'string' ? raw : JSON.stringify(raw);
 
       setMessages((prev) =>
         prev.map((m) =>
@@ -242,12 +276,12 @@ function ChatInner({ id, initialMessages }) {
         if (json?.recommended_searches) {
           setSavedSearches(json.recommended_searches);
         }
-      } catch {}
+      } catch {
+        // ignore parse error; still show answer text
+      }
     } catch {
-      toast.error("GPT-4 failed.");
-      setMessages((prev) =>
-        prev.filter((m) => m.id !== tempAssistant.id)
-      );
+      toast.error('GPT-4 failed.');
+      setMessages((prev) => prev.filter((m) => m.id !== tempAssistant.id));
     } finally {
       setIsLoading(false);
     }
@@ -265,21 +299,21 @@ function ChatInner({ id, initialMessages }) {
   return (
     <div className="w-full flex justify-center">
       <div className="max-w-6xl w-full rounded-lg border bg-background p-6 flex">
-
         {/* LEFT SIDE */}
         <div className="flex-1">
           <div className="flex justify-end mb-4">
             <Button
-              variant={useFrozen ? "secondary" : "default"}
+              variant={useFrozen ? 'secondary' : 'default'}
               onClick={() => setUseFrozen(!useFrozen)}
             >
-              {useFrozen ? "Demo Mode" : "Live Mode"}
+              {useFrozen ? 'Demo Mode' : 'Live Mode'}
             </Button>
           </div>
 
           {showSurvey && (
             <PostTrialSurvey
               onDone={async (surveyData) => {
+                // Compute core DVs based on stored truth labels
                 trial.correctness =
                   surveyData.finalAnswer === trial.correctAnswer;
                 trial.agreement =

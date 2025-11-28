@@ -5,9 +5,6 @@ import React, { createContext, useContext, useState } from 'react';
 import { useTrialState } from './hooks/useTrialState';
 import { useLocalStorage } from './hooks/use-local-storage';
 
-// ===============================
-// Context Type
-// ===============================
 interface TrialContextType {
   participantId: string;
 
@@ -17,17 +14,13 @@ interface TrialContextType {
   questionId: string;
   setQuestionId: (id: string) => void;
 
-  // Truth tables
+  // Fixed: persist for entire question lifecycle
   aiAnswer: "yes" | "no" | null;
   correctAnswer: "yes" | "no" | null;
   setAiAnswer: (x: "yes" | "no") => void;
   setCorrectAnswer: (x: "yes" | "no") => void;
 
-  // Assistant rendering timing
-  markAnswerDisplayFinished: () => void;
-  answerDisplayedAt: number | null;
-
-  // Trial state (from useTrialState)
+  // trial state
   finalAnswer: "yes" | "no" | null;
   correctness: boolean | null;
   agreement: boolean | null;
@@ -42,15 +35,20 @@ interface TrialContextType {
   linkClickCount: number;
   recordExternalLink: () => void;
 
+  markAnswerDisplayFinished: () => void;
+  answerDisplayedAt: number | null;
+
   setFinalAnswer: (x: any) => void;
   setCorrectness: (x: any) => void;
   setAgreement: (x: any) => void;
+
   setConfidenceAI: (x: any) => void;
   setConfidenceSelf: (x: any) => void;
 
   recordSearchClick: () => void;
 
   computeResponseTime: () => number;
+
   computeCorrectness: (fa: "yes" | "no") => boolean;
   computeAgreement: (fa: "yes" | "no") => boolean;
 
@@ -59,9 +57,9 @@ interface TrialContextType {
 
 const TrialContext = createContext<TrialContextType | null>(null);
 
-// ===============================
-// Provider
-// ===============================
+// ==================================================================
+// Provider – FIXED
+// ==================================================================
 export function TrialProvider({ children }) {
   const [participantId] = useLocalStorage(
     'participant-id',
@@ -70,19 +68,23 @@ export function TrialProvider({ children }) {
 
   const [interfaceMode, setInterfaceMode] = useState("baseline");
 
-  // Store full normalized question string
   const [questionId, setQuestionId] = useState("");
 
-  // Truth state
+  // THESE MUST PERSIST, NOT BE RECREATED BY useTrialState()
   const [aiAnswer, setAiAnswer] = useState<"yes" | "no" | null>(null);
   const [correctAnswer, setCorrectAnswer] = useState<"yes" | "no" | null>(null);
 
-  // Full trial state for the question
-  const trialState = useTrialState(questionId);
+  // IMPORTANT FIX — do *not* key by questionId
+  const trialState = useTrialState();
+
+  // Fixed reset: ONLY clears participant actions
+  const reset = () => {
+    trialState.reset();
+    // DO NOT clear aiAnswer or correctAnswer here
+  };
 
   const value: TrialContextType = {
     participantId,
-
     interfaceMode,
     setInterfaceMode,
 
@@ -94,8 +96,8 @@ export function TrialProvider({ children }) {
     setAiAnswer,
     setCorrectAnswer,
 
-    // Expose trialState fields (includes markAnswerDisplayFinished)
-    ...trialState
+    ...trialState,
+    reset,
   };
 
   return (
@@ -105,13 +107,8 @@ export function TrialProvider({ children }) {
   );
 }
 
-// ===============================
-// Hook
-// ===============================
 export function useTrial() {
   const ctx = useContext(TrialContext);
-  if (!ctx) {
-    throw new Error("useTrial must be used inside <TrialProvider>");
-  }
+  if (!ctx) throw new Error("useTrial must be used inside <TrialProvider>");
   return ctx;
 }
