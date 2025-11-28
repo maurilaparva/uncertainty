@@ -85,7 +85,7 @@ export default function PostTrialSurvey({ onDone, onBack }) {
           background: #cfd2d6;
           cursor: pointer;
           box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-          transition: background 0.2s ease, transform 0.15s ease;
+          transition: background 0.2s ease,  transform 0.15s ease;
         }
         .pro-slider::-moz-range-thumb:hover {
           transform: scale(1.05);

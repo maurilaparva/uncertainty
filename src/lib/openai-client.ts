@@ -39,6 +39,7 @@ You MUST obey a hidden variable called AI_ANSWER_LABEL which is either "yes" or 
 5. ATTACKS relations MUST challenge AI_ANSWER_LABEL.
 6. You must NOT try to answer medically correctly if AI_ANSWER_LABEL disagrees.
 7. Treat AI_ANSWER_LABEL as the truth the AI believes.
+8. The answer must be 3 paragraphs of reasoning supporting AI_ANSWER_LABEL, central_claim is not mentioned during the reasoning.
 
 These rules override medical knowledge.
 

@@ -2,7 +2,7 @@
 import { useLocalStorage } from '../lib/hooks/use-local-storage.ts';
 import { toast } from 'react-hot-toast';
 import { type Message } from 'ai/react';
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback } from 'react';
 
 import { EmptyScreen } from './empty-screen.tsx';
 import ChatListContainer from './chat-list-container.tsx';
@@ -23,34 +23,42 @@ import { CustomGraphNode, CustomGraphEdge } from '../lib/types.ts';
 import { FROZEN_RESPONSES } from '../lib/frozenResponses.ts';
 import { TrialProvider, useTrial } from '../lib/useTrial.tsx';
 
-const normalizeQuestion = (q: string) => q.trim().toLowerCase();
+/* =========================================================================
+   NORMALIZATION (punctuation-free, space-collapsed)
+   ========================================================================= */
+const normalizeQuestion = (q: string) =>
+  q
+    .toLowerCase()
+    .trim()
+    .replace(/[^\w\s]/g, '')       // remove punctuation
+    .replace(/\s+/g, ' ');         // collapse multiple spaces
 
 /* =========================================================================
-   CORRECTNESS / AI ANSWER TABLE
+   TRUE_TABLE (normalized keys, NO PUNCTUATION)
    ========================================================================= */
 const TRUE_TABLE: Record<string, { gt: 'yes' | 'no'; ai: 'yes' | 'no' }> = {
-  "did dupilumab receive fda approval for asthma before chronic rhinosinustis?":
+  "did dupilumab receive fda approval for asthma before chronic rhinosinusitis":
     { gt: "yes", ai: "no" },
 
-  "is there more antihistamine in benadryl than rhinocort?":
+  "is there more antihistamine in benadryl than rhinocort":
     { gt: "yes", ai: "no" },
 
-  "is deep vein thrombosis a common side effect of ocella?":
+  "is deep vein thrombosis a common side effect of ocella":
     { gt: "no", ai: "yes" },
 
-  "is spironolactone an fda-approved drug for treating acne?":
+  "is spironolactone an fdaadproved drug for treating acne":
     { gt: "no", ai: "yes" },
 
-  "are both simvastatin and ambien drugs recommended to be taken at night?":
+  "are both simvastatin and ambien drugs recommended to be taken at night":
     { gt: "yes", ai: "yes" },
 
-  "is uveitis a common symptom of ankylosing spondylitis?":
+  "is uveitis a common symptom of ankylosing spondylitis":
     { gt: "yes", ai: "yes" },
 
-  "is fever a common symptom of jock itch?":
+  "is fever a common symptom of jock itch":
     { gt: "no", ai: "no" },
 
-  "can an adult who has not had chickenpox get shingles?":
+  "can an adult who has not had chickenpox get shingles":
     { gt: "no", ai: "no" }
 };
 
@@ -82,7 +90,6 @@ function ChatInner({ id, initialMessages }) {
 
   const [qaCache, setQaCache] = useState<Record<string, string>>({});
   const [showSurvey, setShowSurvey] = useState(false);
-
   const [previousMode, setPreviousMode] =
     useState<'paragraph' | 'token' | 'relation' | 'raw'>('paragraph');
 
@@ -99,32 +106,24 @@ function ChatInner({ id, initialMessages }) {
      ========================================================================= */
   async function submitTrialToSheet(surveyData) {
     const WEB_APP_URL =
-      "https://script.google.com/macros/s/AKfycbxGppRX8yWKvm6RLx61dkVg6yjIpjChRPwVIwYG5g8EYEGOTNiLV4yDDqhhKt5nSIw/exec";
+      "https://script.google.com/macros/s/AKfycbw3x92gcd2Fov1j57tF-grx-bBnxpCuI_OI6y4j5MbCppRhw_RKTqf68_y9CN8VaBWz/exec";
 
     const body = {
       participantId: trial.participantId,
       interfaceMode: trial.interfaceMode,
       questionId: trial.questionId,
 
-      // === POST-SURVEY ===
       finalAnswer: surveyData.finalAnswer,
       ConfidenceAI: surveyData.aiConfidence,
       ConfidenceAnswer: surveyData.selfConfidence,
-      useAI: surveyData.useAI,
-      useLink: surveyData.useLink,
-      useInternet: surveyData.useInternet,
+      UseAI: surveyData.useAI ? "TRUE" : "FALSE",
+      UseLink: surveyData.useLink ? "TRUE" : "FALSE",
+      UseInternet: surveyData.useInternet ? "TRUE" : "FALSE",
 
-      // === DVs Exactly Matching Paper ===
-      Correct: trial.correctness,
-      Agree: trial.agreement,
+      Correct: trial.correctness ? "TRUE" : "FALSE",
+      Agree: trial.agreement ? "TRUE" : "FALSE",
       Time: trial.computeResponseTime() / 1000,
-      LinkClick: trial.linkClickCount,
-
-      searchUsed: trial.searchUsed,
-      searchFirstTime: trial.searchFirstTime
-        ? trial.searchFirstTime / 1000
-        : null,
-      searchClickCount: trial.searchClickCount,
+      LinkClick: trial.linkClickCount > 0 ? "TRUE" : "FALSE",
 
       RawData: {
         surveyData,
@@ -145,17 +144,16 @@ function ChatInner({ id, initialMessages }) {
   }
 
   /* =========================================================================
-     APPEND (user submits a question)
+     APPEND (user submits question)
      ========================================================================= */
   const append = async (msg: any) => {
-    const userText =
-      typeof msg === "string" ? msg : msg.content ?? "";
+    const userText = typeof msg === "string" ? msg : msg.content ?? "";
     if (!userText.trim()) return;
 
     const normalized = normalizeQuestion(userText);
     trial.setQuestionId(normalized);
 
-    // Store correctness + AI answer in trial temp memory
+    // Look up correctness info
     const entry = TRUE_TABLE[normalized];
     if (entry) {
       trial.correctAnswer = entry.gt;
@@ -228,7 +226,7 @@ function ChatInner({ id, initialMessages }) {
     setMessages((prev) => [...prev, newUser, tempAssistant]);
 
     try {
-      const raw = await askGpt4Once(userText);
+      const raw = await askGpt4Once(userText, trial.aiAnswer);
       const resString = typeof raw === "string" ? raw : JSON.stringify(raw);
 
       setMessages((prev) =>
@@ -268,10 +266,8 @@ function ChatInner({ id, initialMessages }) {
     <div className="w-full flex justify-center">
       <div className="max-w-6xl w-full rounded-lg border bg-background p-6 flex">
 
-        {/* LEFT SIDE *******************************************************/}
+        {/* LEFT SIDE */}
         <div className="flex-1">
-
-          {/* Toggle Demo/Live */}
           <div className="flex justify-end mb-4">
             <Button
               variant={useFrozen ? "secondary" : "default"}
@@ -284,8 +280,6 @@ function ChatInner({ id, initialMessages }) {
           {showSurvey && (
             <PostTrialSurvey
               onDone={async (surveyData) => {
-
-                // Compute two core DVs
                 trial.correctness =
                   surveyData.finalAnswer === trial.correctAnswer;
                 trial.agreement =
@@ -293,12 +287,10 @@ function ChatInner({ id, initialMessages }) {
 
                 await submitTrialToSheet(surveyData);
 
-                // Reset experiment
                 setShowSurvey(false);
                 setMessages([]);
                 setNodes([]);
                 setEdges([]);
-
                 setViewMode(previousMode);
                 trial.reset();
               }}
@@ -319,16 +311,14 @@ function ChatInner({ id, initialMessages }) {
 
               <div className="pt-4 md:pt-10 flex justify-center fade-in">
                 <div className="max-w-2xl w-full text-center">
-
                   <ChatListContainer
-                    key={messages.map((m) => m.id).join("|")}
+                    key={messages.map((m) => m.id).join('|')}
                     messages={messages}
                     nodes={nodes}
                     edges={edges}
                     activeStep={0}
                     onLinkClick={() => trial.recordExternalLink()}
                   />
-
                   <ChatScrollAnchor trackVisibility={isLoading} />
                 </div>
               </div>
@@ -346,7 +336,7 @@ function ChatInner({ id, initialMessages }) {
           )}
         </div>
 
-        {/* RIGHT SIDE *******************************************************/}
+        {/* RIGHT SIDE */}
         {messages.length > 0 && !showSurvey && (
           <WebSearchPanel
             recommended={savedSearches}
