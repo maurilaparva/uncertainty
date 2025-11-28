@@ -4,6 +4,8 @@ import { Button } from './ui/button.tsx';
 import { IconArrowRight } from './ui/icons.tsx';
 import { useAtom } from 'jotai';
 import { viewModeAtom } from '../lib/state.ts';
+import { useTrial } from '../lib/useTrial';
+
 
 type EmptyScreenProps = Pick<UseChatHelpers, 'setInput' | 'append'> & {
   id: string;
@@ -52,7 +54,7 @@ export function EmptyScreen({
 }: EmptyScreenProps) {
   const [dots, setDots] = useState('');
   const [viewMode, setViewMode] = useAtom(viewModeAtom);
-
+  const trial = useTrial();
   useEffect(() => {
     if (!isModelLoaded) {
       const interval = setInterval(() => {
@@ -100,9 +102,14 @@ export function EmptyScreen({
             </span>
             <select
               value={viewMode}
-              onChange={(e) => setViewMode(e.target.value as any)}
+              onChange={(e) => {
+                const mode = e.target.value as any;
+                setViewMode(mode);            // UI visualization mode
+                trial.setInterfaceMode(mode); // ⭐ update trial state (needed for logging)
+              }}
               className="border border-gray-300 rounded-md px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300 transition"
             >
+
               <option value="baseline">Baseline</option>
               <option value="paragraph">Paragraph-Level</option>
               <option value="relation">Relation-Level</option>
@@ -136,14 +143,15 @@ export function EmptyScreen({
                 variant="link"
                 className="h-auto p-0 text-base hover:underline text-left text-gray-800"
                 onClick={() => {
-                  if (message.message === '__demo_dupilumab__') {
-                    console.log('🧭 Demo trigger fired');
-                    append('__demo_dupilumab__');
-                  } else {
-                    console.log('Clicked message:', message.message);
-                    append(message.message);
-                  }
-                }}
+                // ⭐ Set question ID in global trial state
+                trial.setQuestionId(`q${index + 1}`);
+
+                if (message.message === '__demo_dupilumab__') {
+                  append('__demo_dupilumab__');
+                } else {
+                  append(message.message);
+                }
+              }}
               >
                 <IconArrowRight className="mr-2 text-gray-500" />
                 {message.heading}

@@ -56,7 +56,6 @@ const RenderRaw = ({ message }: { message: Message }) => (
 
 /* ----------------------------------------------------
    PARAGRAPH VIEW
-   (baseline uses the same component)
 ---------------------------------------------------- */
 function RenderParagraph({
   data,
@@ -74,7 +73,6 @@ function RenderParagraph({
     useState(() => paragraphs.map(() => 0));
 
   const [activeParagraph, setActiveParagraph] = useState(0);
-
   const [showConfidence, setShowConfidence] = useState(false);
 
   const previousAnswer = useRef(data.answer);
@@ -82,10 +80,9 @@ function RenderParagraph({
 
   useEffect(() => {
     let cancelled = false;
-
     const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-    // Reset if new question
+    // Reset animation when switching question
     if (previousAnswer.current !== data.answer) {
       previousAnswer.current = data.answer;
       setVisibleWordCounts(paragraphs.map(() => 0));
@@ -128,7 +125,7 @@ function RenderParagraph({
 
       if (!doneCalled.current) {
         doneCalled.current = true;
-        onDone(); // ⭐ triggers markAnswerDisplayFinished()
+        onDone(); // ⭐ calls markAnswerDisplayFinished()
       }
     }
 
@@ -165,6 +162,7 @@ function RenderParagraph({
         );
       })}
 
+      {/* confidence bar */}
       {!disableConfidence && showConfidence && (
         <div
           className="fade-in"
@@ -198,7 +196,7 @@ function RenderParagraph({
 }
 
 /* ----------------------------------------------------
-   TOKEN VIEW
+   TOKEN VIEW (unchanged)
 ---------------------------------------------------- */
 function RenderToken({ data }: { data: any }) {
   const text: string = data.answer;
@@ -211,14 +209,12 @@ function RenderToken({ data }: { data: any }) {
   }, [tokenInfo]);
 
   const paragraphs = useMemo(() => text.split(/\n\s*\n/), [text]);
-
   const paragraphWords = useMemo(
     () => paragraphs.map((p: string) => p.split(/\s+/).filter(Boolean)),
     [paragraphs]
   );
 
   const totalWords = paragraphWords.flat().length;
-
   const [visibleCount, setVisibleCount] = useState(0);
   const prev = useRef(text);
 
@@ -286,18 +282,13 @@ function RenderToken({ data }: { data: any }) {
 
 /* ----------------------------------------------------
    AssistantMessage
-   ⭐ modified only to record: when the answer finishes 
 ---------------------------------------------------- */
 function AssistantMessage({ message, gptData, viewMode, renderLink }: any) {
   const [showSources, setShowSources] = useState(false);
-
-  // ⭐ NEW
   const trial = useTrial();
 
   const handleDone = useCallback(() => {
-    // ⭐ record when the AI answer finishes rendering
     trial.markAnswerDisplayFinished();
-
     if (viewMode !== 'baseline') setShowSources(true);
   }, [viewMode, trial]);
 
@@ -308,19 +299,11 @@ function AssistantMessage({ message, gptData, viewMode, renderLink }: any) {
   return (
     <div className="my-6 text-left text-black">
       {viewMode === 'paragraph' && (
-        <RenderParagraph
-          data={gptData}
-          disableConfidence={false}
-          onDone={handleDone}
-        />
+        <RenderParagraph data={gptData} disableConfidence={false} onDone={handleDone} />
       )}
 
       {viewMode === 'baseline' && (
-        <RenderParagraph
-          data={gptData}
-          disableConfidence={false}
-          onDone={handleDone}
-        />
+        <RenderParagraph data={gptData} disableConfidence={false} onDone={handleDone} />
       )}
 
       {viewMode === 'token' && <RenderToken data={gptData} />}
@@ -353,14 +336,13 @@ function AssistantMessage({ message, gptData, viewMode, renderLink }: any) {
               ))}
             </ul>
           </div>
-        )}
+      )}
     </div>
   );
 }
 
 /* ----------------------------------------------------
    MAIN ChatList
-   ⭐ modified to log source-link clicks
 ---------------------------------------------------- */
 export function ChatList({
   messages,
@@ -373,7 +355,7 @@ export function ChatList({
   setPreviewPos
 }: ChatListProps) {
   const { viewMode } = useViewMode();
-  const trial = useTrial(); // ⭐ NEW
+  const trial = useTrial();
   const labelToColor = useLabelToColorMap(nodes);
 
   if (!messages.length) return null;
@@ -387,6 +369,7 @@ export function ChatList({
     [messages]
   );
 
+  // ⭐ render "Sources" links
   const renderLink = useCallback(
     (link) => {
       if (!link?.url) return null;
@@ -398,11 +381,14 @@ export function ChatList({
           target="_blank"
           rel="noopener noreferrer"
           className="text-blue-600 underline hover:opacity-80 text-md"
-          onClick={() => trial.recordExternalLink(link.url)} // ⭐ NEW
+          onClick={() => trial.recordExternalLink(link.url)} // ⭐ track DV: LinkClick
           onMouseEnter={(e) => {
             const rect = e.currentTarget.getBoundingClientRect();
             setPreviewUrl(link.url);
-            setPreviewPos({ x: rect.right + 10, y: rect.top });
+            setPreviewPos({
+              x: rect.right + 10,
+              y: rect.top
+            });
           }}
           onMouseLeave={() => setPreviewUrl(null)}
         >
@@ -410,7 +396,7 @@ export function ChatList({
         </a>
       );
     },
-    [setPreviewPos, setPreviewUrl, trial]
+    [setPreviewUrl, setPreviewPos, trial]
   );
 
   return (
@@ -442,7 +428,21 @@ export function ChatList({
         );
       })}
 
-      {previewUrl && <LinkPreview url={previewUrl} position={previewPos} />}
+      {/* ⭐ REPLACEMENT for old <LinkPreview /> */}
+      {previewUrl && (
+        <div
+          className="fixed z-50 bg-white border shadow-md rounded-lg p-3 text-sm max-w-xs"
+          style={{
+            top: previewPos.y + 10,
+            left: previewPos.x + 10
+          }}
+        >
+          <div className="font-semibold mb-1">Source Preview</div>
+          <div className="text-blue-600 break-words">
+            {previewUrl}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

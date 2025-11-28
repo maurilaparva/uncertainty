@@ -3,36 +3,59 @@ import { useLocalStorage } from '../lib/hooks/use-local-storage.ts';
 import { toast } from 'react-hot-toast';
 import { type Message } from 'ai/react';
 import React, { useState, useCallback, useEffect } from 'react';
-import { EmptyScreen } from './empty-screen.tsx';
 
+import { EmptyScreen } from './empty-screen.tsx';
 import ChatListContainer from './chat-list-container.tsx';
 import WebSearchPanel from './WebSearchPanel.tsx';
 import PostTrialSurvey from './PostTrialSurvey.tsx';
-
 import { ChatScrollAnchor } from './chat-scroll-anchors.tsx';
 
 import { useNodesState, useEdgesState } from 'reactflow';
-
 import { useAtom } from 'jotai';
 import { viewModeAtom } from '../lib/state.ts';
+
 import { Button } from './ui/button.tsx';
 import 'reactflow/dist/style.css';
 
 import { askGpt4Once } from '../lib/openai-client.ts';
 import { CustomGraphNode, CustomGraphEdge } from '../lib/types.ts';
 
-// ⭐ Frozen responses
 import { FROZEN_RESPONSES } from '../lib/frozenResponses.ts';
-
-// ⭐ Trial Provider
 import { TrialProvider, useTrial } from '../lib/useTrial.tsx';
 
 const normalizeQuestion = (q: string) => q.trim().toLowerCase();
 
+/* =========================================================================
+   CORRECTNESS / AI ANSWER TABLE
+   ========================================================================= */
+const TRUE_TABLE: Record<string, { gt: 'yes' | 'no'; ai: 'yes' | 'no' }> = {
+  "did dupilumab receive fda approval for asthma before chronic rhinosinustis?":
+    { gt: "yes", ai: "no" },
 
+  "is there more antihistamine in benadryl than rhinocort?":
+    { gt: "yes", ai: "no" },
+
+  "is deep vein thrombosis a common side effect of ocella?":
+    { gt: "no", ai: "yes" },
+
+  "is spironolactone an fda-approved drug for treating acne?":
+    { gt: "no", ai: "yes" },
+
+  "are both simvastatin and ambien drugs recommended to be taken at night?":
+    { gt: "yes", ai: "yes" },
+
+  "is uveitis a common symptom of ankylosing spondylitis?":
+    { gt: "yes", ai: "yes" },
+
+  "is fever a common symptom of jock itch?":
+    { gt: "no", ai: "no" },
+
+  "can an adult who has not had chickenpox get shingles?":
+    { gt: "no", ai: "no" }
+};
 
 /* =========================================================================
-   WRAPPER: Chat WITH TrialProvider
+   WRAPPER
    ========================================================================= */
 export function Chat(props) {
   return (
@@ -42,15 +65,11 @@ export function Chat(props) {
   );
 }
 
-
-
 /* =========================================================================
    MAIN COMPONENT
    ========================================================================= */
 function ChatInner({ id, initialMessages }) {
   const hasOpenAiKey = !!import.meta.env.VITE_OPENAI_API_KEY;
-
-  // ⭐ Global trial tracker
   const trial = useTrial();
 
   const [useFrozen, setUseFrozen] = useState(true);
@@ -67,7 +86,6 @@ function ChatInner({ id, initialMessages }) {
   const [previousMode, setPreviousMode] =
     useState<'paragraph' | 'token' | 'relation' | 'raw'>('paragraph');
 
-  // Freeze recommended searches
   const [savedSearches, setSavedSearches] = useLocalStorage(
     'recommended-searches',
     { paragraph_level: [], token_level: [], relation_level: [] }
@@ -76,37 +94,37 @@ function ChatInner({ id, initialMessages }) {
   const [previewToken] = useLocalStorage('ai-token', null);
   const [serperToken] = useLocalStorage('serper-token', null);
 
-
-
   /* =========================================================================
-     SUBMIT TRIAL TO GOOGLE SHEETS
+     SUBMIT TRIAL → Google Sheets
      ========================================================================= */
   async function submitTrialToSheet(surveyData) {
     const WEB_APP_URL =
-      "https://script.google.com/macros/s/AKfycbwfl-xf0QX7WBbMeTIofRIoajjIkq0aTqpPJ5Vwe103QABwr2jgAZf6v7vLLbwy93w0/exec";
+      "https://script.google.com/macros/s/AKfycbxGppRX8yWKvm6RLx61dkVg6yjIpjChRPwVIwYG5g8EYEGOTNiLV4yDDqhhKt5nSIw/exec";
 
     const body = {
       participantId: trial.participantId,
       interfaceMode: trial.interfaceMode,
       questionId: trial.questionId,
 
+      // === POST-SURVEY ===
       finalAnswer: surveyData.finalAnswer,
-      correctness: trial.correctness,
-      responseTime: trial.computeResponseTime(),
-      agreement: trial.agreement,
-      linkClickCount: trial.linkClickCount,
+      ConfidenceAI: surveyData.aiConfidence,
+      ConfidenceAnswer: surveyData.selfConfidence,
+      useAI: surveyData.useAI,
+      useLink: surveyData.useLink,
+      useInternet: surveyData.useInternet,
 
-      confidence_ai: surveyData.aiConfidence,
-      confidence_self: surveyData.selfConfidence,
-
-      scoreTrust: surveyData.trustScore,
-      scoreUsefulness: surveyData.helpfulness,
+      // === DVs Exactly Matching Paper ===
+      Correct: trial.correctness,
+      Agree: trial.agreement,
+      Time: trial.computeResponseTime() / 1000,
+      LinkClick: trial.linkClickCount,
 
       searchUsed: trial.searchUsed,
-      searchFirstTime: trial.searchFirstTime,
+      searchFirstTime: trial.searchFirstTime
+        ? trial.searchFirstTime / 1000
+        : null,
       searchClickCount: trial.searchClickCount,
-
-      answerReliance: trial.answerReliance,
 
       RawData: {
         surveyData,
@@ -119,65 +137,65 @@ function ChatInner({ id, initialMessages }) {
         method: "POST",
         mode: "no-cors",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
+        body: JSON.stringify(body)
       });
     } catch (err) {
       console.error("Failed to submit trial:", err);
     }
   }
 
-
-
-
-
   /* =========================================================================
-     APPEND (existing behavior)
+     APPEND (user submits a question)
      ========================================================================= */
   const append = async (msg: any) => {
-    const userText = typeof msg === "string" ? msg : msg.content ?? "";
+    const userText =
+      typeof msg === "string" ? msg : msg.content ?? "";
     if (!userText.trim()) return;
 
     const normalized = normalizeQuestion(userText);
+    trial.setQuestionId(normalized);
+
+    // Store correctness + AI answer in trial temp memory
+    const entry = TRUE_TABLE[normalized];
+    if (entry) {
+      trial.correctAnswer = entry.gt;
+      trial.aiAnswer = entry.ai;
+    }
 
     const newUser: Message = {
       id: crypto.randomUUID(),
       role: "user",
-      content: userText,
+      content: userText
     };
 
-    /* ============================================================
-       DEMO MODE
-       ============================================================ */
+    /* DEMO MODE */
     if (useFrozen) {
       const frozen = FROZEN_RESPONSES[normalized];
       if (!frozen) {
-        toast.error("No frozen response found for this question.");
+        toast.error("No frozen response found.");
         return;
       }
 
-      const responseString = JSON.stringify(frozen);
+      const resString = JSON.stringify(frozen);
 
       const newAssistant: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: responseString,
+        content: resString
       };
-
-      setMessages((prev) => [...prev, newUser, newAssistant]);
 
       if (frozen.recommended_searches) {
         setSavedSearches(frozen.recommended_searches);
       }
 
-      setQaCache((prev) => ({ ...prev, [normalized]: responseString }));
+      setQaCache((p) => ({ ...p, [normalized]: resString }));
+      setMessages((prev) => [...prev, newUser, newAssistant]);
       return;
     }
 
-    /* ============================================================
-       LIVE MODE
-       ============================================================ */
+    /* LIVE MODE */
     if (!hasOpenAiKey) {
-      toast.error("OpenAI API key missing in .env");
+      toast.error("Missing OpenAI key.");
       return;
     }
 
@@ -185,7 +203,7 @@ function ChatInner({ id, initialMessages }) {
       const cachedAssistant: Message = {
         id: crypto.randomUUID(),
         role: "assistant",
-        content: qaCache[normalized],
+        content: qaCache[normalized]
       };
 
       try {
@@ -204,15 +222,14 @@ function ChatInner({ id, initialMessages }) {
     const tempAssistant: Message = {
       id: crypto.randomUUID(),
       role: "assistant",
-      content: "Generating answer…",
+      content: "Generating answer…"
     };
 
     setMessages((prev) => [...prev, newUser, tempAssistant]);
 
     try {
       const raw = await askGpt4Once(userText);
-      const resString =
-        typeof raw === "string" ? raw : JSON.stringify(raw);
+      const resString = typeof raw === "string" ? raw : JSON.stringify(raw);
 
       setMessages((prev) =>
         prev.map((m) =>
@@ -220,7 +237,7 @@ function ChatInner({ id, initialMessages }) {
         )
       );
 
-      setQaCache((prev) => ({ ...prev, [normalized]: resString }));
+      setQaCache((p) => ({ ...p, [normalized]: resString }));
 
       try {
         const json = JSON.parse(resString);
@@ -229,44 +246,20 @@ function ChatInner({ id, initialMessages }) {
         }
       } catch {}
     } catch {
-      toast.error("GPT-4 inference failed.");
-      setMessages((prev) => prev.filter((m) => m.id !== tempAssistant.id));
+      toast.error("GPT-4 failed.");
+      setMessages((prev) =>
+        prev.filter((m) => m.id !== tempAssistant.id)
+      );
     } finally {
       setIsLoading(false);
     }
   };
 
-
-
-  /* =========================================================================
-     Update recommended searches from latest assistant
-     ========================================================================= */
-  useEffect(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      const m = messages[i];
-      if (m.role !== "assistant") continue;
-
-      try {
-        const json = JSON.parse(m.content ?? "{}");
-        if (json?.recommended_searches) {
-          setSavedSearches(json.recommended_searches);
-          return;
-        }
-      } catch {}
-    }
-  }, [messages]);
-
-
-
-  /* =========================================================================
-     Show Survey
-     ========================================================================= */
+  /* SHOW SURVEY */
   const handleBackToHome = useCallback(() => {
     setPreviousMode(viewMode);
     setShowSurvey(true);
   }, [viewMode]);
-
-
 
   /* =========================================================================
      RENDER
@@ -275,32 +268,37 @@ function ChatInner({ id, initialMessages }) {
     <div className="w-full flex justify-center">
       <div className="max-w-6xl w-full rounded-lg border bg-background p-6 flex">
 
-        {/* LEFT SIDE */}
+        {/* LEFT SIDE *******************************************************/}
         <div className="flex-1">
+
+          {/* Toggle Demo/Live */}
           <div className="flex justify-end mb-4">
             <Button
               variant={useFrozen ? "secondary" : "default"}
               onClick={() => setUseFrozen(!useFrozen)}
             >
-              {useFrozen
-                ? "Demo Mode (Frozen Responses)"
-                : "Live Mode (GPT-4)"}
+              {useFrozen ? "Demo Mode" : "Live Mode"}
             </Button>
           </div>
 
           {showSurvey && (
             <PostTrialSurvey
               onDone={async (surveyData) => {
-                // ⭐ submit to Google Sheets
+
+                // Compute two core DVs
+                trial.correctness =
+                  surveyData.finalAnswer === trial.correctAnswer;
+                trial.agreement =
+                  surveyData.finalAnswer === trial.aiAnswer;
+
                 await submitTrialToSheet(surveyData);
 
-                // reset UI
+                // Reset experiment
                 setShowSurvey(false);
                 setMessages([]);
                 setNodes([]);
                 setEdges([]);
 
-                // reset trial
                 setViewMode(previousMode);
                 trial.reset();
               }}
@@ -321,6 +319,7 @@ function ChatInner({ id, initialMessages }) {
 
               <div className="pt-4 md:pt-10 flex justify-center fade-in">
                 <div className="max-w-2xl w-full text-center">
+
                   <ChatListContainer
                     key={messages.map((m) => m.id).join("|")}
                     messages={messages}
@@ -339,7 +338,7 @@ function ChatInner({ id, initialMessages }) {
           {!showSurvey && messages.length === 0 && (
             <EmptyScreen
               setInput={() => {}}
-              id={id!}
+              id={id}
               append={append}
               initialOpen={!previewToken || !serperToken}
               isModelLoaded={hasOpenAiKey}
@@ -347,12 +346,12 @@ function ChatInner({ id, initialMessages }) {
           )}
         </div>
 
-        {/* RIGHT SIDE */}
-        {messages.length > 0 && !showSurvey && viewMode !== "baseline" && (
+        {/* RIGHT SIDE *******************************************************/}
+        {messages.length > 0 && !showSurvey && (
           <WebSearchPanel
             recommended={savedSearches}
             viewMode={viewMode}
-            onSearchClick={() => trial.recordSearchClick()} // TRACK SEARCH CLICKS
+            onSearchClick={() => trial.recordSearchClick()}
           />
         )}
       </div>
