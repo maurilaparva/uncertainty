@@ -275,7 +275,7 @@ input[type="range"]::-moz-range-thumb {
   height: 18px;
   width: 18px;
   border-radius: 50%;
-  background: #bfa88f;
+  background: #4a4a4a;
   border: 2px solid #ffffff;
   cursor: pointer;
 }

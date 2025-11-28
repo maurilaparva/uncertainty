@@ -1,11 +1,11 @@
 'use client';
-
 import { Message } from 'ai';
 import { useViewMode } from './ui/view-mode';
 import { ChatMessage } from './chat-message';
 import { CustomGraphNode } from '../lib/types';
 
 import React, {
+  useEffect,
   useState,
   useRef,
   useMemo,
@@ -25,6 +25,7 @@ function useLabelToColorMap(nodes: CustomGraphNode[]) {
       const label = (n?.data as any)?.label ?? '';
       const key = String(label).toLowerCase().trim();
       const bg = (n?.data as any)?.bgColor || (n?.style as any)?.background || '';
+
       if (key && bg) m.set(key, bg);
     }
     return m;
@@ -33,7 +34,11 @@ function useLabelToColorMap(nodes: CustomGraphNode[]) {
 
 const tryParseGptJson = (msg: any) => {
   if (typeof msg !== 'string') return null;
-  try { return JSON.parse(msg); } catch { return null; }
+  try {
+    return JSON.parse(msg);
+  } catch {
+    return null;
+  }
 };
 
 /* ----------------------------------------------------
@@ -48,37 +53,54 @@ const RenderRaw = ({ message }: { message: Message }) => (
 );
 
 /* ----------------------------------------------------
-   PARAGRAPH VIEW (no animations)
+   PARAGRAPH VIEW (static + pastel red)
 ---------------------------------------------------- */
-function RenderParagraph({ data }: any) {
+function RenderParagraph({ data }: { data: any }) {
   const { viewMode } = useViewMode();
-  const paragraphs = useMemo(() => data.answer.split(/\n\s*\n/), [data.answer]);
+  const paragraphs = useMemo(
+    () => (data.answer || '').split(/\n\s*\n/).filter((p: string) => p.trim().length > 0),
+    [data.answer]
+  );
 
   return (
     <div className="mt-4 text-left text-black">
-      {/* paragraphs instantly */}
-      {paragraphs.map((para: string, idx: number) => (
-        <p key={idx} className="text-[17px] flex flex-wrap gap-1 mb-6 text-black">
-          {para.split(/\s+/).map((w: string, i: number) => (
-            <span key={i}>{w + ' '}</span>
-          ))}
-        </p>
-      ))}
+      {paragraphs.map((para: string, pIdx: number) => {
+        const words = para.split(/\s+/).filter(Boolean);
 
-      {/* uncertainty bar */}
+        return (
+          <p key={pIdx} className="text-[17px] flex flex-wrap gap-1 mb-6 text-black">
+            {words.map((word, i) => (
+              <span key={i} className="inline-block">
+                {word + ' '}
+              </span>
+            ))}
+          </p>
+        );
+      })}
+
       {viewMode !== 'baseline' && (
-        <div className="mt-3">
-          <div className="w-full h-2 bg-neutral-200 rounded-full overflow-hidden shadow-inner">
+        <div className="mt-2">
+          <div className="mt-3 w-full h-2 bg-neutral-200 rounded-full overflow-hidden shadow-inner">
             <div
               className="h-2 rounded-full"
               style={{
-                backgroundColor: 'rgb(255,150,150)', // stronger pastel red
+                backgroundColor: 'rgb(255,180,180)',
                 width: `${(data.overall_uncertainty ?? 0) * 100}%`,
-                transition: 'width 0.3s ease-out'
+                transition: 'width 200ms ease-out'
               }}
             />
           </div>
-          <p className="text-xs text-gray-600 mt-1 italic">
+
+          {/* Professionalized UI label */}
+          <p
+            className="text-xs mt-1 italic text-neutral-700"
+            style={{
+              fontFamily: 'Inter, system-ui, sans-serif',
+              WebkitFontSmoothing: 'antialiased',
+              MozOsxFontSmoothing: 'grayscale',
+              letterSpacing: '-0.01em'
+            }}
+          >
             Uncertainty: {(data.overall_uncertainty * 100).toFixed(1)}%
           </p>
         </div>
@@ -88,67 +110,85 @@ function RenderParagraph({ data }: any) {
 }
 
 /* ----------------------------------------------------
-   TOKEN VIEW (slider + tooltip + no animations)
+   TOKEN VIEW (hover tooltip + gradient legend)
 ---------------------------------------------------- */
-function RenderToken({ data }: any) {
-  const text: string = data.answer;
+function RenderToken({
+  data,
+  threshold
+}: {
+  data: any;
+  threshold: number;
+}) {
+  const text: string = data.answer ?? '';
   const tokenInfo = data.token_uncertainty || [];
-
   const scoreMap = useMemo(() => {
     const m = new Map<string, number>();
     tokenInfo.forEach((t: any) => m.set(t.token.toLowerCase(), t.score));
     return m;
   }, [tokenInfo]);
 
-  const paragraphs = useMemo(() => text.split(/\n\s*\n/), [text]);
-  const wordsPerParagraph = useMemo(
-    () => paragraphs.map((p) => p.split(/\s+/).filter(Boolean)),
+  const paragraphs = useMemo(
+    () => text.split(/\n\s*\n/).filter((p: string) => p.trim().length > 0),
+    [text]
+  );
+  const paragraphWords = useMemo(
+    () => paragraphs.map((p: string) => p.split(/\s+/).filter(Boolean)),
     [paragraphs]
   );
 
-  const [threshold, setThreshold] = useState(0.5);
+  const [hoverInfo, setHoverInfo] = useState<{
+    score: number;
+    x: number;
+    y: number;
+    token: string;
+  } | null>(null);
 
-  const pastelRedRGB = '255,150,150';
+  let globalIndex = 0;
 
   return (
-    <div className="mt-4 text-left leading-relaxed text-black">
-      {/* slider */}
-      <div className="mb-3 flex items-center gap-3 text-xs text-gray-700">
-        <span className="font-medium">Uncertainty threshold</span>
-        <input
-          type="range"
-          min={0}
-          max={100}
-          value={Math.round(threshold * 100)}
-          onChange={(e) => setThreshold(Number(e.target.value) / 100)}
-          className="w-40"
-        />
-        <span>{Math.round(threshold * 100)}%</span>
-        <span className="text-[11px] text-gray-500">Tokens ≥ threshold highlighted</span>
-      </div>
-
-      {wordsPerParagraph.map((words, pIdx) => (
+    <div className="mt-4 text-left leading-relaxed text-black relative">
+      {paragraphWords.map((words, pIdx) => (
         <p key={pIdx} className="mb-6 flex flex-wrap gap-1 text-[17px] text-black">
-          {words.map((word: string, i: number) => {
-            const clean = word.toLowerCase().replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, '');
-            const score = scoreMap.get(clean) ?? 0;
+          {words.map((word: string) => {
+            const id = globalIndex++;
 
-            let alpha = 0;
-            if (score >= threshold) {
-              const norm = (score - threshold) / (1 - threshold);
-              alpha = 0.25 + 0.45 * norm;
+            const clean = word
+              .toLowerCase()
+              .replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, '');
+
+            const score = scoreMap.get(clean);
+            const uncertain = typeof score === 'number';
+
+            let bgColor = 'transparent';
+            if (uncertain && score >= threshold) {
+              const denom = 1 - threshold || 1;
+              const norm = Math.min(1, Math.max(0, (score - threshold) / denom));
+
+              const r = Math.round(255 - 35 * norm);
+              const g = Math.round(200 - 160 * norm);
+              const b = Math.round(200 - 160 * norm);
+              const alpha = 0.12 + 0.85 * norm;
+
+              bgColor = `rgba(${r},${g},${b},${alpha})`;
             }
 
             return (
               <span
-                key={i}
-                title={`Uncertainty: ${(score * 100).toFixed(1)}%`} // tooltip
+                key={id}
+                className="inline-block rounded px-1 py-[2px] transition-colors duration-150 cursor-help"
                 style={{
-                  backgroundColor:
-                    score >= threshold ? `rgba(${pastelRedRGB},${alpha})` : 'transparent',
-                  borderRadius: 4,
-                  padding: '2px 4px'
+                  backgroundColor: bgColor
                 }}
+                onMouseEnter={(e) => {
+                  if (!uncertain || typeof score !== 'number') return;
+                  setHoverInfo({
+                    score,
+                    x: e.clientX + 12,
+                    y: e.clientY + 12,
+                    token: clean || word
+                  });
+                }}
+                onMouseLeave={() => setHoverInfo(null)}
               >
                 {word + ' '}
               </span>
@@ -156,22 +196,66 @@ function RenderToken({ data }: any) {
           })}
         </p>
       ))}
+
+      {/* Tooltip (professionalized) */}
+      {hoverInfo && (
+        <div
+          className="fixed z-50 bg-white border border-neutral-300 shadow-lg rounded-md px-2 py-1 text-[11px]"
+          style={{
+            top: hoverInfo.y,
+            left: hoverInfo.x,
+            maxWidth: '220px',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            WebkitFontSmoothing: 'antialiased',
+            MozOsxFontSmoothing: 'grayscale',
+            letterSpacing: '-0.01em'
+          }}
+        >
+          <div className="font-semibold mb-[2px] text-neutral-800">
+            Token: <span className="font-mono break-all">{hoverInfo.token}</span>
+          </div>
+          <div className="text-neutral-700">
+            Uncertainty:{' '}
+            <span className="font-semibold">
+              {(hoverInfo.score * 100).toFixed(1)}%
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /* ----------------------------------------------------
-   ASSISTANT MESSAGE (now always shows sources)
+   AssistantMessage
 ---------------------------------------------------- */
-function AssistantMessage({ message, gptData, viewMode, renderLink }: any) {
+function AssistantMessage({
+  message,
+  gptData,
+  viewMode,
+  renderLink
+}: any) {
+  const trial = useTrial();
+  const [tokenThreshold, setTokenThreshold] = useState(0.5);
+
+  useEffect(() => {
+    trial.markAnswerDisplayFinished();
+  }, [trial, message.id]);
+
+  const showSources =
+    viewMode !== 'baseline' &&
+    Array.isArray(gptData.links_paragraph) &&
+    gptData.links_paragraph.length > 0;
+
   return (
     <div className="my-6 text-left text-black font-[Inter]">
+      {(viewMode === 'paragraph' || viewMode === 'baseline') && (
+        <RenderParagraph data={gptData} />
+      )}
 
-      {viewMode === 'paragraph' && <RenderParagraph data={gptData} />}
-
-      {viewMode === 'baseline' && <RenderParagraph data={gptData} />}
-
-      {viewMode === 'token' && <RenderToken data={gptData} />}
+      {viewMode === 'token' && (
+        <RenderToken data={gptData} threshold={tokenThreshold} />
+      )}
 
       {viewMode === 'relation' && (
         <div className="mt-6">
@@ -185,32 +269,150 @@ function AssistantMessage({ message, gptData, viewMode, renderLink }: any) {
 
       {viewMode === 'raw' && <RenderRaw message={message} />}
 
-      {/* Always show sources below paragraph & token views */}
-      {viewMode !== 'relation' &&
-        Array.isArray(gptData.links_paragraph) &&
-        gptData.links_paragraph.length > 0 && (
-          <div className="mt-10 font-[Inter] text-gray-900">
-            <h2 className="text-[13px] font-semibold tracking-wide uppercase text-neutral-700 mb-3">
-              Sources
-            </h2>
-            <ul className="space-y-1">
-              {gptData.links_paragraph.map((lnk: any) => (
-                <li key={lnk.url} className="ml-1">
-                  {renderLink(lnk, {
-                    className:
-                      'text-[14px] leading-tight font-medium text-blue-700 hover:text-blue-900 underline underline-offset-2 transition-colors'
-                  })}
-                </li>
-              ))}
-            </ul>
+      {/* Sources header (professionalized) */}
+      {showSources && (
+        <div className="mt-8 fade-in text-gray-900">
+          <h2
+            className="text-[13px] font-semibold uppercase mb-3 tracking-wide text-neutral-700"
+            style={{
+              fontFamily: 'Inter, system-ui, sans-serif',
+              WebkitFontSmoothing: 'antialiased',
+              MozOsxFontSmoothing: 'grayscale',
+              letterSpacing: '-0.01em'
+            }}
+          >
+            Sources
+          </h2>
+
+          <ul className="space-y-1">
+            {gptData.links_paragraph.map((lnk: any) => (
+              <li key={lnk.url} className="ml-1">
+                {renderLink(lnk, {
+                  className:
+                    'text-[14px] leading-tight font-medium text-blue-700 hover:text-blue-900 underline underline-offset-2 tracking-wide transition-colors',
+                  style: {
+                    fontFamily: 'Inter, system-ui, sans-serif',
+                    WebkitFontSmoothing: 'antialiased',
+                    MozOsxFontSmoothing: 'grayscale',
+                    letterSpacing: '-0.01em'
+                  }
+                })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {/* Token legend + slider */}
+      {viewMode === 'token' && (
+        <div className="mt-6">
+
+          {/* Gradient legend */}
+          <div className="mb-2">
+            <div
+              className="flex justify-between text-[11px] mb-1 text-neutral-600"
+              style={{
+                fontFamily: 'Inter, system-ui, sans-serif',
+                WebkitFontSmoothing: 'antialiased',
+                MozOsxFontSmoothing: 'grayscale'
+              }}
+            >
+              <span>Low uncertainty</span>
+              <span>High uncertainty</span>
+            </div>
+
+            <div
+              className="h-2 w-full rounded-full"
+              style={{
+                background:
+                  'linear-gradient(to right, rgba(255,235,235,1), rgba(220,40,40,1))'
+              }}
+            />
           </div>
-        )}
+
+          {/* === PROFESSIONAL SLIDER === */}
+          <div className="mt-4">
+            <style jsx>{`
+              
+              .pro-slider {
+                -webkit-appearance: none;
+                width: 100%;
+                height: 6px;
+                border-radius: 4px;
+                background: #cfd2d6;
+                outline: none;
+                box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+              }
+
+              .pro-slider::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                appearance: none;
+                width: 18px;
+                height: 18px;
+                border-radius: 50%;
+                background: #cfd2d6;
+                cursor: pointer;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+                transition: background 0.2s ease, transform 0.15s ease;
+              }
+
+              .pro-slider::-webkit-slider-thumb:hover {
+                background: #cfd2d6;
+                transform: scale(1.05);
+              }
+
+              .pro-slider::-moz-range-thumb {
+                width: 18px;
+                height: 18px;
+                border: none;
+                border-radius: 50%;
+                background: #cfd2d6;
+                cursor: pointer;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+                transition: background 0.2s ease, transform 0.15s ease;
+              }
+
+              .pro-slider::-moz-range-thumb:hover {
+                background: #cfd2d6;
+                transform: scale(1.05);
+              }
+            `}</style>
+
+            <div
+              className="flex justify-between mb-1 text-[11px] text-neutral-600"
+              style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+            >
+              <span>0%</span>
+              <span className="font-semibold">
+                Threshold: {Math.round(tokenThreshold * 100)}%
+              </span>
+              <span>100%</span>
+            </div>
+
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round(tokenThreshold * 100)}
+              onChange={(e) => setTokenThreshold(Number(e.target.value) / 100)}
+              className="pro-slider"
+            />
+
+            <p
+              className="mt-1 text-[11px] text-neutral-600"
+              style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+            >
+              Tokens with uncertainty ≥ threshold are highlighted more strongly.
+            </p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 /* ----------------------------------------------------
-   MAIN CHAT LIST
+   MAIN ChatList
 ---------------------------------------------------- */
 export function ChatList({
   messages,
@@ -223,15 +425,18 @@ export function ChatList({
   setPreviewPos
 }: ChatListProps) {
   const { viewMode } = useViewMode();
-  const trial = useTrial(); // still needed for recordExternalLink
-  const hideTimeout = useRef<any>(null);
-
+  const trial = useTrial();
   const labelToColor = useLabelToColorMap(nodes);
+  const hideTimeout = useRef<any>(null);
 
   if (!messages.length) return null;
 
-  const parsed = useMemo(
-    () => messages.map((m) => ({ message: m, gptData: m.role === 'assistant' ? tryParseGptJson(m.content) : null })),
+  const parsedMessages = useMemo(
+    () =>
+      messages.map((m) => ({
+        message: m,
+        gptData: m.role === 'assistant' ? tryParseGptJson(m.content) : null
+      })),
     [messages]
   );
 
@@ -245,15 +450,24 @@ export function ChatList({
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
-          className={opts.className ?? 'text-blue-600 underline'}
+          className={
+            opts.className ??
+            'text-blue-600 underline hover:opacity-80 text-md'
+          }
+          style={opts.style}
           onClick={() => trial.recordExternalLink(link.url)}
           onMouseEnter={(e) => {
             if (hideTimeout.current) clearTimeout(hideTimeout.current);
             setPreviewUrl(link.url);
-            setPreviewPos({ x: e.clientX - 350, y: e.clientY - 200 });
+            setPreviewPos({
+              x: e.clientX - 350,
+              y: e.clientY - 200
+            });
           }}
           onMouseLeave={() => {
-            hideTimeout.current = setTimeout(() => setPreviewUrl(null), 250);
+            hideTimeout.current = setTimeout(() => {
+              setPreviewUrl(null);
+            }, 250);
           }}
         >
           {link.title || link.url}
@@ -265,12 +479,13 @@ export function ChatList({
 
   return (
     <div className="relative mx-auto px-0 font-[Inter]">
+      {parsedMessages.map(({ message, gptData }) => {
+        const id = message.id;
 
-      {parsed.map(({ message, gptData }) => {
         if (gptData) {
           return (
             <AssistantMessage
-              key={message.id}
+              key={id}
               message={message}
               gptData={gptData}
               viewMode={viewMode}
@@ -278,30 +493,44 @@ export function ChatList({
             />
           );
         }
+
         return (
           <ChatMessage
-            key={message.id}
+            key={id}
             message={message}
-            nodes={[]}
-            edges={[]}
+            nodes={message.role === 'user' ? [] : nodes}
+            edges={message.role === 'user' ? [] : edges}
             clickedNode={clickedNode}
             labelToColor={labelToColor}
           />
         );
       })}
 
-      {/* Tooltip */}
       {previewUrl && (
         <div
-          className="fixed z-50 bg-white border shadow-lg rounded-lg p-3 text-sm max-w-xs font-[Inter]"
-          style={{ top: previewPos.y, left: previewPos.x }}
-          onMouseEnter={() => clearTimeout(hideTimeout.current)}
+          className="fixed z-50 bg-white border shadow-lg rounded-lg p-3 text-sm max-w-xs"
+          style={{
+            top: previewPos.y,
+            left: previewPos.x,
+            fontFamily: 'Inter, system-ui, sans-serif',
+            WebkitFontSmoothing: 'antialiased',
+            MozOsxFontSmoothing: 'grayscale',
+          }}
+          onMouseEnter={() => {
+            if (hideTimeout.current) clearTimeout(hideTimeout.current);
+          }}
           onMouseLeave={() => {
-            hideTimeout.current = setTimeout(() => setPreviewUrl(null), 250);
+            hideTimeout.current = setTimeout(() => {
+              setPreviewUrl(null);
+            }, 250);
           }}
         >
-          <div className="font-semibold text-[13px] mb-1">Source Preview</div>
-          <div className="text-blue-700 text-[13px] leading-snug">{previewUrl}</div>
+          <div className="font-semibold text-[13px] mb-1 tracking-wide text-neutral-900">
+            Source Preview
+          </div>
+          <div className="text-blue-700 text-[13px] leading-snug">
+            {previewUrl}
+          </div>
         </div>
       )}
     </div>
