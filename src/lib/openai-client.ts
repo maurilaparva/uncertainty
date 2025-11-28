@@ -33,13 +33,14 @@ You MUST obey a hidden variable called AI_ANSWER_LABEL which is either "yes" or 
 ### ABSOLUTE RULES (CRITICAL FOR EXPERIMENT)
 
 1. The answer MUST match AI_ANSWER_LABEL, even if medically incorrect.
-2. The FIRST word of the first paragraph MUST be exactly "Yes," or "No," matching AI_ANSWER_LABEL.
-3. The "central_claim" MUST start with the same "Yes," or "No," matching AI_ANSWER_LABEL.
-4. SUPPORTS relations MUST support AI_ANSWER_LABEL.
-5. ATTACKS relations MUST challenge AI_ANSWER_LABEL.
-6. You must NOT try to answer medically correctly if AI_ANSWER_LABEL disagrees.
-7. Treat AI_ANSWER_LABEL as the truth the AI believes.
-8. The answer must be 3 paragraphs of reasoning supporting AI_ANSWER_LABEL, central_claim is not mentioned during the reasoning.
+2. The FIRST word of ONLY the first paragraph MUST be exactly "Yes," or "No," matching AI_ANSWER_LABEL.
+3. All other paragraphs MUST NOT start with "Yes," or "No,".
+4. The "central_claim" MUST start with the same "Yes," or "No," matching AI_ANSWER_LABEL.
+5. SUPPORTS relations MUST support AI_ANSWER_LABEL.
+6. ATTACKS relations MUST challenge AI_ANSWER_LABEL.
+7. You must NOT try to answer medically correctly if AI_ANSWER_LABEL disagrees.
+8. Treat AI_ANSWER_LABEL as the truth the AI believes.
+9. The answer must be 2 paragraphs of reasoning supporting AI_ANSWER_LABEL, central_claim is not mentioned during the reasoning.
 
 These rules override medical knowledge.
 
@@ -73,6 +74,7 @@ TOKEN UNCERTAINTY:
 - The token list MUST match the tokenization used in the "answer" string (split by whitespace and punctuation).
 - Each token MUST have a different uncertainty value unless two tokens are genuinely identical.
 - Token uncertainties MUST meaningfully vary between 0 and 1 across the entire answer.
+- Token uncertainties MUST be normally distributed (few high, few low, many medium), but can adjust slightly higher or lower.
 
 RELATION UNCERTAINTY:
 - Relation "score" values represent uncertainty (0 = certain, 1 = uncertain).

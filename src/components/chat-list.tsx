@@ -183,8 +183,8 @@ function RenderToken({
                   if (!uncertain || typeof score !== 'number') return;
                   setHoverInfo({
                     score,
-                    x: e.clientX + 12,
-                    y: e.clientY + 12,
+                    x: e.pageX + 12,
+                    y: e.pageY + 12,
                     token: clean || word
                   });
                 }}
@@ -202,8 +202,8 @@ function RenderToken({
         <div
           className="fixed z-50 bg-white border border-neutral-300 shadow-lg rounded-md px-2 py-1 text-[11px]"
           style={{
-            top: hoverInfo.y,
-            left: hoverInfo.x,
+            top: hoverInfo.y-150,
+            left: hoverInfo.x-410,
             maxWidth: '220px',
             fontFamily: 'Inter, system-ui, sans-serif',
             WebkitFontSmoothing: 'antialiased',
@@ -211,9 +211,6 @@ function RenderToken({
             letterSpacing: '-0.01em'
           }}
         >
-          <div className="font-semibold mb-[2px] text-neutral-800">
-            Token: <span className="font-mono break-all">{hoverInfo.token}</span>
-          </div>
           <div className="text-neutral-700">
             Uncertainty:{' '}
             <span className="font-semibold">
