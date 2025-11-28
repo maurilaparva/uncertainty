@@ -1,11 +1,11 @@
 'use client';
+
 import { Message } from 'ai';
 import { useViewMode } from './ui/view-mode';
 import { ChatMessage } from './chat-message';
-import { CustomGraphNode, CustomGraphEdge } from '../lib/types';
+import { CustomGraphNode } from '../lib/types';
 
 import React, {
-  useEffect,
   useState,
   useRef,
   useMemo,
@@ -13,8 +13,6 @@ import React, {
 } from 'react';
 
 import FlowComponent from './vis-flow/index.tsx';
-
-// ⭐ NEW: global trial tracking
 import { useTrial } from '../lib/useTrial';
 
 /* ----------------------------------------------------
@@ -27,7 +25,6 @@ function useLabelToColorMap(nodes: CustomGraphNode[]) {
       const label = (n?.data as any)?.label ?? '';
       const key = String(label).toLowerCase().trim();
       const bg = (n?.data as any)?.bgColor || (n?.style as any)?.background || '';
-
       if (key && bg) m.set(key, bg);
     }
     return m;
@@ -36,11 +33,7 @@ function useLabelToColorMap(nodes: CustomGraphNode[]) {
 
 const tryParseGptJson = (msg: any) => {
   if (typeof msg !== 'string') return null;
-  try {
-    return JSON.parse(msg);
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(msg); } catch { return null; }
 };
 
 /* ----------------------------------------------------
@@ -55,139 +48,38 @@ const RenderRaw = ({ message }: { message: Message }) => (
 );
 
 /* ----------------------------------------------------
-   PARAGRAPH VIEW
+   PARAGRAPH VIEW (no animations)
 ---------------------------------------------------- */
-function RenderParagraph({
-  data,
-  disableConfidence = false,
-  onDone
-}: {
-  data: any;
-  disableConfidence?: boolean;
-  onDone: () => void;
-}) {
+function RenderParagraph({ data }: any) {
   const { viewMode } = useViewMode();
   const paragraphs = useMemo(() => data.answer.split(/\n\s*\n/), [data.answer]);
 
-  const [visibleWordCounts, setVisibleWordCounts] =
-    useState(() => paragraphs.map(() => 0));
-
-  const [activeParagraph, setActiveParagraph] = useState(0);
-  const [showConfidence, setShowConfidence] = useState(false);
-
-  const previousAnswer = useRef(data.answer);
-  const doneCalled = useRef(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-    // Reset animation when switching question
-    if (previousAnswer.current !== data.answer) {
-      previousAnswer.current = data.answer;
-      setVisibleWordCounts(paragraphs.map(() => 0));
-      setActiveParagraph(0);
-      setShowConfidence(false);
-      doneCalled.current = false;
-    }
-
-    async function animate() {
-      if (doneCalled.current) return;
-
-      for (let p = 0; p < paragraphs.length; p++) {
-        if (cancelled) return;
-
-        setActiveParagraph(p);
-
-        const words = paragraphs[p].split(/\s+/).filter(Boolean);
-
-        for (let w = 0; w < words.length; w++) {
-          if (cancelled) return;
-
-          setVisibleWordCounts((prev) => {
-            const next = [...prev];
-            next[p] = w + 1;
-            return next;
-          });
-
-          await wait(15);
-        }
-
-        await wait(200);
-      }
-
-      await wait(150);
-
-      if (!disableConfidence) {
-        setShowConfidence(true);
-        await wait(300);
-      }
-
-      if (!doneCalled.current) {
-        doneCalled.current = true;
-        onDone(); // ⭐ calls markAnswerDisplayFinished()
-      }
-    }
-
-    animate();
-    return () => {
-      cancelled = true;
-    };
-  }, [data.answer, paragraphs, disableConfidence, onDone]);
-
   return (
     <div className="mt-4 text-left text-black">
-      {paragraphs.map((para, pIdx) => {
-        if (pIdx > activeParagraph) return null;
+      {/* paragraphs instantly */}
+      {paragraphs.map((para: string, idx: number) => (
+        <p key={idx} className="text-[17px] flex flex-wrap gap-1 mb-6 text-black">
+          {para.split(/\s+/).map((w: string, i: number) => (
+            <span key={i}>{w + ' '}</span>
+          ))}
+        </p>
+      ))}
 
-        const words = para.split(/\s+/).filter(Boolean);
-        const count = visibleWordCounts[pIdx];
-
-        return (
-          <p
-            key={pIdx}
-            className="text-[17px] flex flex-wrap gap-1 mb-6 text-black"
-          >
-            {words.map((word, i) => (
-              <span
-                key={i}
-                className={`transition-all inline-block ${
-                  i < count ? 'opacity-100' : 'opacity-0 translate-y-1'
-                }`}
-              >
-                {word + ' '}
-              </span>
-            ))}
-          </p>
-        );
-      })}
-
-      {/* confidence bar */}
-      {!disableConfidence && showConfidence && (
-        <div
-          className="fade-in"
-          style={{
-            opacity: viewMode === 'baseline' ? 0 : 1,
-            height: viewMode === 'baseline' ? 0 : 'auto',
-            overflow: viewMode === 'baseline' ? 'hidden' : 'visible',
-            pointerEvents: 'none',
-            position: viewMode === 'baseline' ? 'absolute' : 'static'
-          }}
-        >
-          <div className="mt-3 w-full h-2 bg-neutral-200 rounded-full overflow-hidden shadow-inner">
+      {/* uncertainty bar */}
+      {viewMode !== 'baseline' && (
+        <div className="mt-3">
+          <div className="w-full h-2 bg-neutral-200 rounded-full overflow-hidden shadow-inner">
             <div
               className="h-2 rounded-full"
               style={{
-                backgroundColor: 'rgb(216,180,132)',
-                animation: 'growBar 1.5s ease-out forwards',
-                ['--target-width' as any]: `${
-                  (data.overall_confidence ?? 0) * 100
-                }%`
+                backgroundColor: 'rgb(255,150,150)', // stronger pastel red
+                width: `${(data.overall_uncertainty ?? 0) * 100}%`,
+                transition: 'width 0.3s ease-out'
               }}
             />
           </div>
           <p className="text-xs text-gray-600 mt-1 italic">
-            Model confidence: {(data.overall_confidence * 100).toFixed(1)}%
+            Uncertainty: {(data.overall_uncertainty * 100).toFixed(1)}%
           </p>
         </div>
       )}
@@ -196,9 +88,9 @@ function RenderParagraph({
 }
 
 /* ----------------------------------------------------
-   TOKEN VIEW (unchanged)
+   TOKEN VIEW (slider + tooltip + no animations)
 ---------------------------------------------------- */
-function RenderToken({ data }: { data: any }) {
+function RenderToken({ data }: any) {
   const text: string = data.answer;
   const tokenInfo = data.token_uncertainty || [];
 
@@ -209,63 +101,51 @@ function RenderToken({ data }: { data: any }) {
   }, [tokenInfo]);
 
   const paragraphs = useMemo(() => text.split(/\n\s*\n/), [text]);
-  const paragraphWords = useMemo(
-    () => paragraphs.map((p: string) => p.split(/\s+/).filter(Boolean)),
+  const wordsPerParagraph = useMemo(
+    () => paragraphs.map((p) => p.split(/\s+/).filter(Boolean)),
     [paragraphs]
   );
 
-  const totalWords = paragraphWords.flat().length;
-  const [visibleCount, setVisibleCount] = useState(0);
-  const prev = useRef(text);
+  const [threshold, setThreshold] = useState(0.5);
 
-  useEffect(() => {
-    if (prev.current !== text) {
-      prev.current = text;
-      setVisibleCount(0);
-    }
-
-    const interval = setInterval(() => {
-      setVisibleCount((x) => (x < totalWords ? x + 1 : x));
-    }, 15);
-
-    return () => clearInterval(interval);
-  }, [text, totalWords]);
-
-  let globalIndex = 0;
-  const amberRGB = '216,180,132';
+  const pastelRedRGB = '255,150,150';
 
   return (
     <div className="mt-4 text-left leading-relaxed text-black">
-      {paragraphWords.map((words, pIdx) => (
+      {/* slider */}
+      <div className="mb-3 flex items-center gap-3 text-xs text-gray-700">
+        <span className="font-medium">Uncertainty threshold</span>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={Math.round(threshold * 100)}
+          onChange={(e) => setThreshold(Number(e.target.value) / 100)}
+          className="w-40"
+        />
+        <span>{Math.round(threshold * 100)}%</span>
+        <span className="text-[11px] text-gray-500">Tokens ≥ threshold highlighted</span>
+      </div>
+
+      {wordsPerParagraph.map((words, pIdx) => (
         <p key={pIdx} className="mb-6 flex flex-wrap gap-1 text-[17px] text-black">
-          {words.map((word: string) => {
-            const id = globalIndex++;
-            const isVisible = id < visibleCount;
-
-            const clean = word
-              .toLowerCase()
-              .replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, '');
-
-            const score = scoreMap.get(clean);
-            const uncertain = typeof score === 'number';
+          {words.map((word: string, i: number) => {
+            const clean = word.toLowerCase().replace(/^[^a-z0-9]+|[^a-z0-9]+$/gi, '');
+            const score = scoreMap.get(clean) ?? 0;
 
             let alpha = 0;
-            if (uncertain) {
-              const intensity = Math.max(0, score - 0.8) / 0.2;
-              alpha = 0.4 + intensity * 0.9;
+            if (score >= threshold) {
+              const norm = (score - threshold) / (1 - threshold);
+              alpha = 0.25 + 0.45 * norm;
             }
 
             return (
               <span
-                key={id}
-                className={`transition-all inline-block ${
-                  isVisible ? 'opacity-100' : 'opacity-0 translate-y-1'
-                }`}
+                key={i}
+                title={`Uncertainty: ${(score * 100).toFixed(1)}%`} // tooltip
                 style={{
                   backgroundColor:
-                    uncertain && alpha > 0
-                      ? `rgba(${amberRGB},${alpha})`
-                      : 'transparent',
+                    score >= threshold ? `rgba(${pastelRedRGB},${alpha})` : 'transparent',
                   borderRadius: 4,
                   padding: '2px 4px'
                 }}
@@ -281,30 +161,15 @@ function RenderToken({ data }: { data: any }) {
 }
 
 /* ----------------------------------------------------
-   AssistantMessage
+   ASSISTANT MESSAGE (now always shows sources)
 ---------------------------------------------------- */
 function AssistantMessage({ message, gptData, viewMode, renderLink }: any) {
-  const [showSources, setShowSources] = useState(false);
-  const trial = useTrial();
-
-  const handleDone = useCallback(() => {
-    trial.markAnswerDisplayFinished();
-    if (viewMode !== 'baseline') setShowSources(true);
-  }, [viewMode, trial]);
-
-  useEffect(() => {
-    setShowSources(false);
-  }, [message.id, viewMode]);
-
   return (
-    <div className="my-6 text-left text-black">
-      {viewMode === 'paragraph' && (
-        <RenderParagraph data={gptData} disableConfidence={false} onDone={handleDone} />
-      )}
+    <div className="my-6 text-left text-black font-[Inter]">
 
-      {viewMode === 'baseline' && (
-        <RenderParagraph data={gptData} disableConfidence={false} onDone={handleDone} />
-      )}
+      {viewMode === 'paragraph' && <RenderParagraph data={gptData} />}
+
+      {viewMode === 'baseline' && <RenderParagraph data={gptData} />}
 
       {viewMode === 'token' && <RenderToken data={gptData} />}
 
@@ -313,36 +178,39 @@ function AssistantMessage({ message, gptData, viewMode, renderLink }: any) {
           <FlowComponent
             centralClaim={gptData.central_claim}
             relations={gptData.relations}
-            overallConfidence={gptData.overall_confidence}
+            overallConfidence={gptData.overall_uncertainty}
           />
         </div>
       )}
 
       {viewMode === 'raw' && <RenderRaw message={message} />}
 
-      {viewMode !== 'baseline' &&
-        showSources &&
-        Array.isArray(gptData.links) &&
-        gptData.links.length > 0 && (
-          <div className="mt-8 fade-in">
-            <h1 className="text-base font-semibold text-gray-900 mb-2">
+      {/* Always show sources below paragraph & token views */}
+      {viewMode !== 'relation' &&
+        Array.isArray(gptData.links_paragraph) &&
+        gptData.links_paragraph.length > 0 && (
+          <div className="mt-10 font-[Inter] text-gray-900">
+            <h2 className="text-[13px] font-semibold tracking-wide uppercase text-neutral-700 mb-3">
               Sources
-            </h1>
-            <ul className="space-y-2">
-              {gptData.links.map((lnk: any) => (
+            </h2>
+            <ul className="space-y-1">
+              {gptData.links_paragraph.map((lnk: any) => (
                 <li key={lnk.url} className="ml-1">
-                  {renderLink(lnk)}
+                  {renderLink(lnk, {
+                    className:
+                      'text-[14px] leading-tight font-medium text-blue-700 hover:text-blue-900 underline underline-offset-2 transition-colors'
+                  })}
                 </li>
               ))}
             </ul>
           </div>
-      )}
+        )}
     </div>
   );
 }
 
 /* ----------------------------------------------------
-   MAIN ChatList
+   MAIN CHAT LIST
 ---------------------------------------------------- */
 export function ChatList({
   messages,
@@ -355,23 +223,20 @@ export function ChatList({
   setPreviewPos
 }: ChatListProps) {
   const { viewMode } = useViewMode();
-  const trial = useTrial();
+  const trial = useTrial(); // still needed for recordExternalLink
+  const hideTimeout = useRef<any>(null);
+
   const labelToColor = useLabelToColorMap(nodes);
 
   if (!messages.length) return null;
 
-  const parsedMessages = useMemo(
-    () =>
-      messages.map((m) => ({
-        message: m,
-        gptData: m.role === 'assistant' ? tryParseGptJson(m.content) : null
-      })),
+  const parsed = useMemo(
+    () => messages.map((m) => ({ message: m, gptData: m.role === 'assistant' ? tryParseGptJson(m.content) : null })),
     [messages]
   );
 
-  // ⭐ render "Sources" links
   const renderLink = useCallback(
-    (link) => {
+    (link, opts: any = {}) => {
       if (!link?.url) return null;
 
       return (
@@ -380,34 +245,32 @@ export function ChatList({
           href={link.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-blue-600 underline hover:opacity-80 text-md"
-          onClick={() => trial.recordExternalLink(link.url)} // ⭐ track DV: LinkClick
+          className={opts.className ?? 'text-blue-600 underline'}
+          onClick={() => trial.recordExternalLink(link.url)}
           onMouseEnter={(e) => {
-            const rect = e.currentTarget.getBoundingClientRect();
+            if (hideTimeout.current) clearTimeout(hideTimeout.current);
             setPreviewUrl(link.url);
-            setPreviewPos({
-              x: rect.right + 10,
-              y: rect.top
-            });
+            setPreviewPos({ x: e.clientX - 350, y: e.clientY - 200 });
           }}
-          onMouseLeave={() => setPreviewUrl(null)}
+          onMouseLeave={() => {
+            hideTimeout.current = setTimeout(() => setPreviewUrl(null), 250);
+          }}
         >
           {link.title || link.url}
         </a>
       );
     },
-    [setPreviewUrl, setPreviewPos, trial]
+    [trial, setPreviewUrl, setPreviewPos]
   );
 
   return (
-    <div className="relative mx-auto px-0">
-      {parsedMessages.map(({ message, gptData }) => {
-        const id = message.id;
+    <div className="relative mx-auto px-0 font-[Inter]">
 
+      {parsed.map(({ message, gptData }) => {
         if (gptData) {
           return (
             <AssistantMessage
-              key={id}
+              key={message.id}
               message={message}
               gptData={gptData}
               viewMode={viewMode}
@@ -415,32 +278,30 @@ export function ChatList({
             />
           );
         }
-
         return (
           <ChatMessage
-            key={id}
+            key={message.id}
             message={message}
-            nodes={message.role === 'user' ? [] : nodes}
-            edges={message.role === 'user' ? [] : edges}
+            nodes={[]}
+            edges={[]}
             clickedNode={clickedNode}
             labelToColor={labelToColor}
           />
         );
       })}
 
-      {/* ⭐ REPLACEMENT for old <LinkPreview /> */}
+      {/* Tooltip */}
       {previewUrl && (
         <div
-          className="fixed z-50 bg-white border shadow-md rounded-lg p-3 text-sm max-w-xs"
-          style={{
-            top: previewPos.y + 10,
-            left: previewPos.x + 10
+          className="fixed z-50 bg-white border shadow-lg rounded-lg p-3 text-sm max-w-xs font-[Inter]"
+          style={{ top: previewPos.y, left: previewPos.x }}
+          onMouseEnter={() => clearTimeout(hideTimeout.current)}
+          onMouseLeave={() => {
+            hideTimeout.current = setTimeout(() => setPreviewUrl(null), 250);
           }}
         >
-          <div className="font-semibold mb-1">Source Preview</div>
-          <div className="text-blue-600 break-words">
-            {previewUrl}
-          </div>
+          <div className="font-semibold text-[13px] mb-1">Source Preview</div>
+          <div className="text-blue-700 text-[13px] leading-snug">{previewUrl}</div>
         </div>
       )}
     </div>

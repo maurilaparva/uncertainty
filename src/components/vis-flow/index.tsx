@@ -18,12 +18,14 @@ interface Relation {
   target: string
   type: 'SUPPORTS' | 'ATTACKS'
   score: number
+  explanation: string                   // NEW
+  relation_links: { url: string; title?: string }[]   // NEW
 }
 
 interface FlowProps {
   centralClaim: string
   relations: Relation[]
-  overallConfidence: number   // <-- NEW
+  overallConfidence: number
 }
 
 // --------------------------------------------
@@ -40,8 +42,8 @@ function computeFinalClaimConfidence(
   supporters: number[],
   attackers: number[]
 ) {
-  const va = aggregateF(attackers)   // aggregated attack force
-  const vs = aggregateF(supporters)  // aggregated support force
+  const va = aggregateF(attackers)
+  const vs = aggregateF(supporters)
 
   if (va === vs) return v0
 
@@ -65,94 +67,114 @@ export default function FlowComponent({ centralClaim, relations, overallConfiden
     const supports = relations.filter(r => r.type === 'SUPPORTS')
     const attacks = relations.filter(r => r.type === 'ATTACKS')
 
-    // --------------------------------------------
-    // DF-QuAD: compute final aggregated confidence
-    // --------------------------------------------
-    const supportScores = supports.map(r => r.score)
-    const attackScores = attacks.map(r => r.score)
-
+    // Compute DF-QuAD confidence
     const finalConfidence = computeFinalClaimConfidence(
       overallConfidence,
-      supportScores,
-      attackScores
+      supports.map(r => r.score),
+      attacks.map(r => r.score)
     )
 
-    // --------------------------------------------
-    // COLORS
-    // --------------------------------------------
     const centralBlueGray = 'rgba(150, 170, 200, 0.35)'
-    const green  = 'rgba(120, 200, 160, 0.25)'
-    const red    = 'rgba(230, 120, 120, 0.25)'
+    const green = 'rgba(120, 200, 160, 0.25)'
+    const red = 'rgba(230, 120, 120, 0.25)'
 
-    // --------------------------------------------
-    // Base style for all nodes
-    // --------------------------------------------
     const nodeBaseStyle = {
       borderRadius: 12,
       padding: 12,
       border: '1px solid rgba(0,0,0,0.18)',
       boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-      textAlign: 'center' as const,
+      textAlign: 'left' as const,
       whiteSpace: 'pre-line' as const,
       fontWeight: 400,
       color: 'black',
+      fontFamily: 'Inter, sans-serif'
     }
 
     const nodeList: Node[] = []
 
-    // --------------------------------------------
-    // CENTRAL NODE — now shows aggregated confidence
-    // --------------------------------------------
+    // ----------------------------------------------------
+    // CENTRAL CLAIM NODE
+    // ----------------------------------------------------
     nodeList.push({
       id: centralClaim,
-      data: { label: `${centralClaim}\n(confidence = ${finalConfidence.toFixed(2)})` },
+      data: {
+        label: `${centralClaim}\n(confidence = ${finalConfidence.toFixed(2)})`
+      },
       position: { x: 480, y: -100 },
       style: {
         ...nodeBaseStyle,
         background: centralBlueGray,
-        fontSize: 17,
+        fontSize: 17
       },
       targetPosition: Position.Bottom,
       sourcePosition: Position.Bottom
     })
 
-    // --------------------------------------------
-    // SUPPORTING NODES — green
-    // --------------------------------------------
+    // ----------------------------------------------------
+    // SUPPORTING RELATIONS — with explanation + links
+    // ----------------------------------------------------
     supports.forEach((rel, i) => {
+      const linkText =
+        rel.relation_links && rel.relation_links.length
+          ? rel.relation_links
+              .map(l => `• ${l.title || l.url}`)
+              .join('\n')
+          : ''
+
       nodeList.push({
         id: rel.source,
-        data: { label: `${rel.source}\n(confidence = ${rel.score.toFixed(2)})` },
-        position: { x: 280, y: 130 + i * 110 },
+        data: {
+          label:
+            `${rel.source}\n` +
+            `(confidence = ${rel.score.toFixed(2)})\n\n` +
+            `${rel.explanation || ''}\n\n` +
+            `${linkText}`
+        },
+        position: { x: 260, y: 130 + i * 160 },
         style: {
           ...nodeBaseStyle,
           background: green,
+          fontSize: 13
         },
         sourcePosition: Position.Right,
         targetPosition: Position.Left
       })
     })
 
-    // --------------------------------------------
-    // ATTACKING NODES — red
-    // --------------------------------------------
+    // ----------------------------------------------------
+    // ATTACKING RELATIONS — with explanation + links
+    // ----------------------------------------------------
     attacks.forEach((rel, i) => {
+      const linkText =
+        rel.relation_links && rel.relation_links.length
+          ? rel.relation_links
+              .map(l => `• ${l.title || l.url}`)
+              .join('\n')
+          : ''
+
       nodeList.push({
         id: rel.source,
-        data: { label: `${rel.source}\n(confidence = ${rel.score.toFixed(2)})` },
-        position: { x: 680, y: 130 + i * 110 },
+        data: {
+          label:
+            `${rel.source}\n` +
+            `(confidence = ${rel.score.toFixed(2)})\n\n` +
+            `${rel.explanation || ''}\n\n` +
+            `${linkText}`
+        },
+        position: { x: 700, y: 130 + i * 160 },
         style: {
           ...nodeBaseStyle,
           background: red,
+          fontSize: 13
         },
         sourcePosition: Position.Left,
         targetPosition: Position.Right
       })
     })
 
-    // --------------------------------------------
-    // EDGES — dotted with labels
-    // --------------------------------------------
+    // ----------------------------------------------------
+    // EDGES
+    // ----------------------------------------------------
     const edgeList: Edge[] = relations.map((rel, i) => ({
       id: `e-${i}`,
       source: rel.source,
@@ -162,7 +184,7 @@ export default function FlowComponent({ centralClaim, relations, overallConfiden
       style: {
         stroke: 'black',
         strokeWidth: 1.6,
-        strokeDasharray: '4 3',
+        strokeDasharray: '4 3'
       },
       labelStyle: {
         fontSize: 12.5,
@@ -175,7 +197,7 @@ export default function FlowComponent({ centralClaim, relations, overallConfiden
         stroke: 'rgba(0,0,0,0.22)',
         strokeWidth: 0.5,
         borderRadius: 4,
-        padding: 2,
+        padding: 2
       },
       markerEnd: { type: 'arrowclosed', color: 'black' }
     }))
@@ -192,16 +214,14 @@ export default function FlowComponent({ centralClaim, relations, overallConfiden
         height: '550px',
         border: '1px solid rgba(0,0,0,0.15)',
         borderRadius: '12px',
-        backgroundColor: '#fafafa',
+        backgroundColor: '#fafafa'
       }}
     >
       <ReactFlow
         nodes={nodes}
         edges={edges}
         fitView
-        fitViewOptions={{
-          padding: 0.25,
-        }}
+        fitViewOptions={{ padding: 0.25 }}
         minZoom={0.3}
         maxZoom={2.2}
         proOptions={{ hideAttribution: true }}
@@ -210,7 +230,6 @@ export default function FlowComponent({ centralClaim, relations, overallConfiden
         elementsSelectable={false}
         zoomOnScroll={true}
         zoomOnPinch={false}
-        panOnScroll={false}
       >
         <Background color="#e5e5e5" gap={10} />
       </ReactFlow>
