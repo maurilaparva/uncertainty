@@ -31,8 +31,8 @@ const exampleMessages = [
     message: 'Is Spironolactone an FDA-approved drug for treating acne?'
   },
   {
-    heading: 'Are both Simvastatin and Ambien drugs that are recommended to be taken at night?',
-    message: 'Are both Simvastatin and Ambien drugs that are recommended to be taken at night?'
+    heading: 'Are both Simvastatin and Ambien drugs recommended to be taken at night?',
+    message: 'Are both Simvastatin and Ambien drugs recommended to be taken at night?'
   },
   {
     heading: 'Is Uveitis a common symptom of Ankylosing Spondylitis?',

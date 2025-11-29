@@ -92,15 +92,25 @@ SUPPORTING SUB-ARGUMENTS:
   • date comparisons
   • restatements of the claim
   • trivial inversions
-- MUST be written as exactly one sentence starting with:
-  “This supports the claim because …”
+
 
 ATTACKING SUB-ARGUMENTS:
 - MUST NOT be taken from the answer paragraphs.
 - MUST be plausible counterarguments someone might raise.
 - MUST NOT be simple factual contradictions or the opposite of the claim.
-- MUST be written as exactly one sentence starting with:
-  “This attacks the claim because …”
+
+EXPLANATION RULES (CRITICAL):
+
+- For SUPPORTS relations:
+    explanation MUST start with exactly:
+    “This supports the claim because …”
+
+- For ATTACKS relations:
+    explanation MUST start with exactly:
+    “This attacks the claim because …”
+
+- Explanations must NOT use the SUPPORT phrasing for ATTACKS, and must NOT use the ATTACK phrasing for SUPPORTS.
+- Explanations MUST match the type field exactly.
 
 GENERAL RULES:
 - Produce exactly 2 SUPPORTS and 2 ATTACKS.
