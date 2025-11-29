@@ -238,7 +238,7 @@ export default function FlowComponent({
           bgColor: green,
           nodeRole: 'support'
         },
-        position: { x: 200, y: 250 + i * 320 }
+        position: { x: 200, y: 250 + i * 360 }
       })
 
       e.push({
@@ -282,7 +282,7 @@ export default function FlowComponent({
           bgColor: red,
           nodeRole: 'attack'
         },
-        position: { x: 760, y: 250 + i * 320 }
+        position: { x: 760, y: 250 + i * 360 }
       })
 
       e.push({

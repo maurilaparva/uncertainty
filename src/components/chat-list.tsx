@@ -155,12 +155,17 @@ function RenderToken({ data, threshold }: { data: any; threshold: number }) {
               const denom = 1 - threshold || 1;
               const norm = Math.min(1, Math.max(0, (score - threshold) / denom));
 
-              const r = Math.round(255 - 35 * norm);
-              const g = Math.round(200 - 160 * norm);
-              const b = Math.round(200 - 160 * norm);
-              const alpha = 0.12 + 0.85 * norm;
+              // Color stops matching the slider gradient
+              const low =  { r: 255, g: 200, b: 200, a: 0.20 };
+              const high = { r: 255, g: 110, b: 110, a: 0.90 };
 
-              bgColor = `rgba(${r},${g},${b},${alpha})`;
+              // Interpolate between low → high based on norm
+              const r = low.r + (high.r - low.r) * norm;
+              const g = low.g + (high.g - low.g) * norm;
+              const b = low.b + (high.b - low.b) * norm;
+              const a = low.a + (high.a - low.a) * norm;
+
+              bgColor = `rgba(${r}, ${g}, ${b}, ${a})`;
             }
 
             return (

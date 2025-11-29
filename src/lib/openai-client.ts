@@ -69,7 +69,8 @@ TOKEN UNCERTAINTY:
 - MUST vary across tokens.
 - MUST correlate with ambiguity or speculation.
 - One entry per token; no skipping, no merging.
-- Distribution should have a mix of low/medium/high values (normally distributed between 0-1)
+- Distribution of token uncertainties should be normally distributed from 0 to 1, it can be slightly skewed towards lower uncertainty but not heavily skewed.
+- There should be high uncertainty (0.7-1.0) on at least 10% of tokens, medium uncertainty (0.4-0.7) on at least 20% of tokens, and low uncertainty (0-0.4) on at least 30% of tokens.
 
 ===========================================================
 RELATION REQUIREMENTS (SUPPORTS & ATTACKS)
