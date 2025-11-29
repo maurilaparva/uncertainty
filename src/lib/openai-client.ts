@@ -82,7 +82,8 @@ RELATION UNCERTAINTY:
 - Relation scores MUST NOT all be 0.0.
 - 0 = relation is fully certain
 - 1 = relation is highly uncertain
-
+- for explanation, it needs to be one sentence long.
+- for explanation, sentence must start with "This attacks the claim because", or "This supports the claim because".
 
 ===========================================================
 UPDATED JSON OUTPUT FORMAT

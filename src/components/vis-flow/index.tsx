@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import ReactFlow, {
   Background,
   Edge,
   Node,
+  Handle,
   Position
 } from 'reactflow'
 
@@ -18,8 +19,8 @@ interface Relation {
   target: string
   type: 'SUPPORTS' | 'ATTACKS'
   score: number
-  explanation: string                   // NEW
-  relation_links: { url: string; title?: string }[]   // NEW
+  explanation: string
+  relation_links: { url: string; title?: string }[]
 }
 
 interface FlowProps {
@@ -29,12 +30,11 @@ interface FlowProps {
 }
 
 // --------------------------------------------
-// DF-QuAD HELPERS
+// DF-QuAD Helpers
 // --------------------------------------------
 function aggregateF(values: number[]): number {
   if (!values || values.length === 0) return 0
-  const product = values.reduce((acc, v) => acc * Math.abs(1 - v), 1)
-  return 1 - product
+  return 1 - values.reduce((acc, v) => acc * Math.abs(1 - v), 1)
 }
 
 function computeFinalClaimConfidence(
@@ -46,192 +46,299 @@ function computeFinalClaimConfidence(
   const vs = aggregateF(supporters)
 
   if (va === vs) return v0
+  if (va > vs) return v0 - (v0 * Math.abs(vs - va))
+  return v0 + ((1 - v0) * Math.abs(vs - va))
+}
 
-  if (va > vs) {
-    return v0 - (v0 * Math.abs(vs - va))
-  } else {
-    return v0 + ((1 - v0) * Math.abs(vs - va))
-  }
+// ----------------------------------------------------
+// Node Component with SAFE handles + bigger fonts
+// ----------------------------------------------------
+function RelationNode({ data }: any) {
+  const { label, explanation, uncertainty, bgColor, nodeRole } = data
+
+  const isCentral = nodeRole === 'central'
+  const isSupport = nodeRole === 'support'
+  const isAttack = nodeRole === 'attack'
+
+  return (
+    <div style={{ position: 'relative' }}>
+
+      {/* Central claim handles */}
+      <Handle
+        id="left-target"
+        type="target"
+        position={Position.Left}
+        style={{ opacity: isCentral ? 1 : 0, width: 10, height: 10, background: 'black', borderRadius: 5 }}
+      />
+
+      <Handle
+        id="right-target"
+        type="target"
+        position={Position.Right}
+        style={{ opacity: isCentral ? 1 : 0, width: 10, height: 10, background: 'black', borderRadius: 5 }}
+      />
+
+      <Handle
+        id="bottom"
+        type="target"
+        position={Position.Bottom}
+        style={{ opacity: isCentral ? 1 : 0, width: 10, height: 10, background: 'black', borderRadius: 5 }}
+      />
+
+      {/* Support → arrow from RIGHT */}
+      <Handle
+        id="right-out"
+        type="source"
+        position={Position.Right}
+        style={{ opacity: isSupport ? 1 : 0, width: 10, height: 10, background: 'black', borderRadius: 5 }}
+      />
+
+      {/* Attack → arrow from LEFT */}
+      <Handle
+        id="left-out"
+        type="source"
+        position={Position.Left}
+        style={{ opacity: isAttack ? 1 : 0, width: 10, height: 10, background: 'black', borderRadius: 5 }}
+      />
+
+      {/* Hidden fallback handles */}
+      <Handle id="hidden-top" type="source" position={Position.Top} style={{ opacity: 0 }} />
+      <Handle id="hidden-bottom" type="target" position={Position.Bottom} style={{ opacity: 0 }} />
+
+      {/* Node UI */}
+      <div
+        style={{
+          borderRadius: 16,
+          padding: 6,
+          background: bgColor || 'rgba(0,0,0,0.05)',
+          boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
+        }}
+      >
+        <div
+          style={{
+            width: 260,
+            padding: 14,
+            borderRadius: 12,
+            border: '1px solid rgba(0,0,0,0.18)',
+            background: 'white',
+            fontFamily: 'Inter, system-ui, sans-serif',
+            color: 'black',
+            whiteSpace: 'pre-line'
+          }}
+        >
+          {/* Larger label */}
+          <div style={{ fontSize: 18, fontWeight: 600 }}>
+            {label}
+          </div>
+
+          {/* Larger explanation */}
+          {explanation && (
+            <div style={{ marginTop: 10, fontSize: 16 }}>
+              {explanation}
+            </div>
+          )}
+
+          {/* Uncertainty bar */}
+          <div className="w-full h-2 bg-neutral-200 rounded-full overflow-hidden shadow-inner mt-4">
+            <div
+              className="h-2 rounded-full"
+              style={{
+                backgroundColor: 'rgb(255,180,180)',
+                width: `${uncertainty * 100}%`,
+                transition: 'width 200ms ease-out'
+              }}
+            />
+          </div>
+
+          {/* Larger uncertainty text */}
+          <p
+            style={{
+              marginTop: 6,
+              fontSize: 14,
+              fontStyle: 'italic',
+              color: '#444',
+              fontFamily: 'Inter, system-ui, sans-serif'
+            }}
+          >
+            Uncertainty: {(uncertainty * 100).toFixed(1)}%
+          </p>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // --------------------------------------------
-// Component
+// Graph Component
 // --------------------------------------------
-export default function FlowComponent({ centralClaim, relations, overallConfidence }: FlowProps) {
+export default function FlowComponent({
+  centralClaim,
+  relations,
+  overallConfidence
+}: FlowProps) {
   const [nodes, setNodes] = useState<Node[]>([])
   const [edges, setEdges] = useState<Edge[]>([])
 
-  useEffect(() => {
-    if (!relations || relations.length === 0 || !centralClaim) return
+  const nodeTypes = useMemo(() => ({ relationNode: RelationNode }), [])
 
+  useEffect(() => {
+    if (!relations || relations.length === 0 || !centralClaim) {
+      setNodes([])
+      setEdges([])
+      return
+    }
+
+    const v0 = 1 - overallConfidence
     const supports = relations.filter(r => r.type === 'SUPPORTS')
     const attacks = relations.filter(r => r.type === 'ATTACKS')
 
-    // Compute DF-QuAD confidence
     const finalConfidence = computeFinalClaimConfidence(
-      overallConfidence,
-      supports.map(r => r.score),
-      attacks.map(r => r.score)
+      v0,
+      supports.map(r => 1 - r.score),
+      attacks.map(r => 1 - r.score)
     )
 
-    const centralBlueGray = 'rgba(150, 170, 200, 0.35)'
-    const green = 'rgba(120, 200, 160, 0.25)'
-    const red = 'rgba(230, 120, 120, 0.25)'
+    const centralUncertainty = 1 - finalConfidence
 
-    const nodeBaseStyle = {
-      borderRadius: 12,
-      padding: 12,
-      border: '1px solid rgba(0,0,0,0.18)',
-      boxShadow: '0 2px 6px rgba(0,0,0,0.08)',
-      textAlign: 'left' as const,
-      whiteSpace: 'pre-line' as const,
-      fontWeight: 400,
-      color: 'black',
-      fontFamily: 'Inter, sans-serif'
-    }
+    const green = 'rgba(120, 200, 160, 0.35)'
+    const red = 'rgba(230, 120, 120, 0.35)'
+    const bluegray = 'rgba(150, 170, 200, 0.35)'
 
-    const nodeList: Node[] = []
+    const n: Node[] = []
+    const e: Edge[] = []
 
-    // ----------------------------------------------------
     // CENTRAL CLAIM NODE
-    // ----------------------------------------------------
-    nodeList.push({
-      id: centralClaim,
+    const centralId = 'central'
+    n.push({
+      id: centralId,
+      type: 'relationNode',
       data: {
-        label: `${centralClaim}\n(confidence = ${finalConfidence.toFixed(2)})`
+        label: centralClaim,
+        explanation: '',
+        linksText: '',
+        uncertainty: centralUncertainty,
+        bgColor: bluegray,
+        nodeRole: 'central'
       },
-      position: { x: 480, y: -100 },
-      style: {
-        ...nodeBaseStyle,
-        background: centralBlueGray,
-        fontSize: 17
-      },
-      targetPosition: Position.Bottom,
-      sourcePosition: Position.Bottom
+      position: { x: 480, y: 0 }
     })
 
-    // ----------------------------------------------------
-    // SUPPORTING RELATIONS — with explanation + links
-    // ----------------------------------------------------
+    // SUPPORT NODES → right-out → bottom of claim
     supports.forEach((rel, i) => {
-      const linkText =
-        rel.relation_links && rel.relation_links.length
-          ? rel.relation_links
-              .map(l => `• ${l.title || l.url}`)
-              .join('\n')
-          : ''
+      const id = `support-${i}`
 
-      nodeList.push({
-        id: rel.source,
+      n.push({
+        id,
+        type: 'relationNode',
         data: {
-          label:
-            `${rel.source}\n` +
-            `(confidence = ${rel.score.toFixed(2)})\n\n` +
-            `${rel.explanation || ''}\n\n` +
-            `${linkText}`
+          label: rel.source,
+          explanation: rel.explanation,
+          linksText: '',
+          uncertainty: rel.score,
+          bgColor: green,
+          nodeRole: 'support'
         },
-        position: { x: 260, y: 130 + i * 160 },
-        style: {
-          ...nodeBaseStyle,
-          background: green,
-          fontSize: 13
+        position: { x: 200, y: 250 + i * 280 }
+      })
+
+      e.push({
+        id: `edge-s-${i}`,
+        source: id,
+        sourceHandle: 'right-out',
+        target: centralId,
+        targetHandle: 'bottom',
+        label: 'supports',
+        labelStyle: {
+          fontSize: 18,
+          fontWeight: 500,
+          fill: '#111827',
+          fontFamily: 'Inter, system-ui, sans-serif'
         },
-        sourcePosition: Position.Right,
-        targetPosition: Position.Left
+        labelBgStyle: {
+          fill: 'white',
+          stroke: 'rgba(0,0,0,0.25)',
+          strokeWidth: 0.9,
+          rx: 5,
+          ry: 5,
+          padding: 5
+        },
+        style: { stroke: 'black', strokeWidth: 2 },
+        markerEnd: { type: 'arrowclosed', color: 'black' }
       })
     })
 
-    // ----------------------------------------------------
-    // ATTACKING RELATIONS — with explanation + links
-    // ----------------------------------------------------
+    // ATTACK NODES → left-out → bottom of claim
     attacks.forEach((rel, i) => {
-      const linkText =
-        rel.relation_links && rel.relation_links.length
-          ? rel.relation_links
-              .map(l => `• ${l.title || l.url}`)
-              .join('\n')
-          : ''
+      const id = `attack-${i}`
 
-      nodeList.push({
-        id: rel.source,
+      n.push({
+        id,
+        type: 'relationNode',
         data: {
-          label:
-            `${rel.source}\n` +
-            `(confidence = ${rel.score.toFixed(2)})\n\n` +
-            `${rel.explanation || ''}\n\n` +
-            `${linkText}`
+          label: rel.source,
+          explanation: rel.explanation,
+          linksText: '',
+          uncertainty: rel.score,
+          bgColor: red,
+          nodeRole: 'attack'
         },
-        position: { x: 700, y: 130 + i * 160 },
-        style: {
-          ...nodeBaseStyle,
-          background: red,
-          fontSize: 13
+        position: { x: 760, y: 250 + i * 280 }
+      })
+
+      e.push({
+        id: `edge-a-${i}`,
+        source: id,
+        sourceHandle: 'left-out',
+        target: centralId,
+        targetHandle: 'bottom',
+        label: 'attacks',
+        labelStyle: {
+          fontSize: 18,
+          fontWeight: 500,
+          fill: '#111827',
+          fontFamily: 'Inter, system-ui, sans-serif'
         },
-        sourcePosition: Position.Left,
-        targetPosition: Position.Right
+        labelBgStyle: {
+          fill: 'white',
+          stroke: 'rgba(0,0,0,0.25)',
+          strokeWidth: 0.9,
+          rx: 5,
+          ry: 5,
+          padding: 5
+        },
+        style: { stroke: 'black', strokeWidth: 2 },
+        markerEnd: { type: 'arrowclosed', color: 'black' }
       })
     })
 
-    // ----------------------------------------------------
-    // EDGES
-    // ----------------------------------------------------
-    const edgeList: Edge[] = relations.map((rel, i) => ({
-      id: `e-${i}`,
-      source: rel.source,
-      target: centralClaim,
-      animated: false,
-      label: rel.type === 'SUPPORTS' ? 'supports' : 'attacks',
-      style: {
-        stroke: 'black',
-        strokeWidth: 1.6,
-        strokeDasharray: '4 3'
-      },
-      labelStyle: {
-        fontSize: 12.5,
-        fontWeight: 500,
-        fill: 'black'
-      },
-      labelShowBg: true,
-      labelBgStyle: {
-        fill: 'white',
-        stroke: 'rgba(0,0,0,0.22)',
-        strokeWidth: 0.5,
-        borderRadius: 4,
-        padding: 2
-      },
-      markerEnd: { type: 'arrowclosed', color: 'black' }
-    }))
-
-    setNodes(nodeList)
-    setEdges(edgeList)
+    setNodes(n)
+    setEdges(e)
   }, [relations, centralClaim, overallConfidence])
 
   return (
     <div
-      className="fade-in"
       style={{
         width: '100%',
-        height: '550px',
+        height: '720px',
         border: '1px solid rgba(0,0,0,0.15)',
-        borderRadius: '12px',
-        backgroundColor: '#fafafa'
+        borderRadius: 12,
+        background: '#fafafa'
       }}
     >
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         fitView
-        fitViewOptions={{ padding: 0.25 }}
-        minZoom={0.3}
-        maxZoom={2.2}
-        proOptions={{ hideAttribution: true }}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={false}
-        zoomOnScroll={true}
-        zoomOnPinch={false}
+        edgesFocusable={false}
+        defaultEdgeOptions={{
+          markerEnd: { type: 'arrowclosed', color: 'black' }
+        }}
       >
-        <Background color="#e5e5e5" gap={10} />
+        <Background color="#e5e5e5" gap={12} />
       </ReactFlow>
     </div>
   )
