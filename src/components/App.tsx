@@ -36,6 +36,8 @@ const normalizeQuestion = (q: string) =>
 /* =========================================================================
    TRUE_TABLE (normalized keys, NO PUNCTUATION)
    ========================================================================= */
+
+
 const TRUE_TABLE: Record<string, { gt: 'yes' | 'no'; ai: 'yes' | 'no' }> = {
   'did dupilumab receive fda approval for asthma before chronic rhinosinusitis': {
     gt: 'yes',
@@ -78,6 +80,10 @@ const TRUE_TABLE: Record<string, { gt: 'yes' | 'no'; ai: 'yes' | 'no' }> = {
     ai: 'no',
   },
 };
+const QUESTION_IDS = Object.keys(TRUE_TABLE).reduce((acc, key, idx) => {
+  acc[key] = `q${idx + 1}`;
+  return acc;
+}, {} as Record<string, string>);
 
 /* =========================================================================
    WRAPPER
@@ -168,7 +174,7 @@ function ChatInner({ id, initialMessages }) {
     if (!userText.trim()) return;
 
     const normalized = normalizeQuestion(userText);
-    trial.setQuestionId(normalized);
+    trial.setQuestionId(QUESTION_IDS[normalized]);
 
     // Look up correctness + AI label from table
     const entry = TRUE_TABLE[normalized];
