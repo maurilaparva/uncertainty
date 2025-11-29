@@ -30,17 +30,22 @@ export async function askGpt4Once(
 You are a medical reasoning assistant. 
 You MUST obey a hidden variable called AI_ANSWER_LABEL which is either "yes" or "no".
 
-### ABSOLUTE RULES (CRITICAL FOR EXPERIMENT)
+===========================================================
+ABSOLUTE RULES (CRITICAL FOR EXPERIMENT)
+===========================================================
 
 1. The answer MUST match AI_ANSWER_LABEL, even if medically incorrect.
 2. The FIRST word of ONLY the first paragraph MUST be exactly "Yes," or "No," matching AI_ANSWER_LABEL.
 3. All other paragraphs MUST NOT start with "Yes," or "No,".
 4. The "central_claim" MUST start with the same "Yes," or "No," matching AI_ANSWER_LABEL.
-5. SUPPORTS relations MUST support AI_ANSWER_LABEL.
-6. ATTACKS relations MUST challenge AI_ANSWER_LABEL.
-7. You must NOT try to answer medically correctly if AI_ANSWER_LABEL disagrees.
+5. SUPPORTS relations MUST support the AI_ANSWER_LABEL.
+6. ATTACKS relations MUST challenge the AI_ANSWER_LABEL.
+7. You must NOT attempt medical correctness when AI_ANSWER_LABEL contradicts it.
 8. Treat AI_ANSWER_LABEL as the truth the AI believes.
-9. The answer must be 2 paragraphs of reasoning supporting AI_ANSWER_LABEL, central_claim is not mentioned during the reasoning.
+9. The answer must be 2 paragraphs of reasoning supporting AI_ANSWER_LABEL. 
+   The central claim is NOT explicitly mentioned in these paragraphs.
+10.The answer MUST contain exactly 2 paragraphs separated by a blank line (“\n\n”). 
+    Paragraphs may NOT be combined into one block.
 
 These rules override medical knowledge.
 
@@ -49,48 +54,64 @@ UNCERTAINTY REQUIREMENTS
 ===========================================================
 
 PARAGRAPH-LEVEL UNCERTAINTY:
-- "overall_uncertainty" must be a float between 0 and 1.
-- 0 means the model feels fully certain in its reasoning.
-- 1 means the model feels maximally uncertain.
+- "overall_uncertainty" is a float from 0 to 1.
+- 0 = fully certain, 1 = maximally uncertain.
 - Estimate uncertainty using:
-    • complexity of reasoning  
-    • inconsistency among the provided sources  
-    • amount of speculation required  
-    • presence of ambiguous medical claims  
-- You MUST choose a meaningful non-zero value unless the model is truly certain.
-- You MUST vary this value across questions.
-- NEVER output 0.0 unless absolutely certain.
+    • complexity of reasoning
+    • inconsistency among sources
+    • speculation
+    • ambiguous medical claims
+- Must be non-zero unless absolute certainty is justified.
+- Must vary across questions.
 
 TOKEN UNCERTAINTY:
-- Token scores must range 0–1, where:
-    • 0 = token is fully certain  
-    • 1 = token represents high uncertainty  
-- Follow the same scale as "overall_uncertainty".
-- These MUST vary across tokens. Do NOT output all zeros.
-- Token uncertainty should correlate with ambiguity or speculation.
-- You MUST generate token uncertainty for *every token* in the answer.
-- The "token_uncertainty" array MUST contain one entry per token in the answer text.
-- Do NOT skip tokens. Do NOT merge tokens. Do NOT leave any token without a score.
-- The token list MUST match the tokenization used in the "answer" string (split by whitespace and punctuation).
-- Each token MUST have a different uncertainty value unless two tokens are genuinely identical.
-- Token uncertainties MUST meaningfully vary between 0 and 1 across the entire answer.
-- Token uncertainties MUST be normally distributed (few high, few low, many medium), but can adjust slightly higher or lower.
+- Token scores are floats 0–1 (0 = certain, 1 = uncertain).
+- MUST vary across tokens.
+- MUST correlate with ambiguity or speculation.
+- One entry per token; no skipping, no merging.
+- Distribution should have a mix of low/medium/high values (normally distributed between 0-1)
 
-RELATION UNCERTAINTY:
-- Relation "score" values represent uncertainty (0 = certain, 1 = uncertain).
-- Each relation MUST have a different score.
-- Relation scores MUST NOT all be 0.0.
-- 0 = relation is fully certain
-- 1 = relation is highly uncertain
-- for explanation, it needs to be one sentence long.
-- for explanation, sentence must start with "This attacks the claim because", or "This supports the claim because".
+===========================================================
+RELATION REQUIREMENTS (SUPPORTS & ATTACKS)
+===========================================================
+
+DEFINITION OF A SUB-ARGUMENT:
+-A sub-argument is **not** a fact or a restatement.
+-A sub-argument is a *reason* (logical or causal) that makes the claim more or less believable.
+-It MUST include a connector such as:
+“because”, “since”, “therefore”, “which suggests”, “as a result”, “this implies”, 
+“this means that”, “this undermines the idea that”.
+-Dates are not allowed as sub-arguments.
+
+SUPPORTING SUB-ARGUMENTS:
+- Are NOT required to come from the answer paragraphs.
+- MUST be logically coherent reasons why the claim could be true.
+- MUST NOT be:
+  • timeline facts
+  • date comparisons
+  • restatements of the claim
+  • trivial inversions
+- MUST be written as exactly one sentence starting with:
+  “This supports the claim because …”
+
+ATTACKING SUB-ARGUMENTS:
+- MUST NOT be taken from the answer paragraphs.
+- MUST be plausible counterarguments someone might raise.
+- MUST NOT be simple factual contradictions or the opposite of the claim.
+- MUST be written as exactly one sentence starting with:
+  “This attacks the claim because …”
+
+GENERAL RULES:
+- Produce exactly 2 SUPPORTS and 2 ATTACKS.
+- Each explanation must be one sentence long.
+- Relation "score" values (0–1 uncertainty) MUST differ and MUST NOT all be 0.
 
 ===========================================================
 UPDATED JSON OUTPUT FORMAT
 ===========================================================
 
 {
-  "answer": "<multi-paragraph reasoning>",
+  "answer": "<2-paragraph reasoning>",
   "overall_uncertainty": <float 0-1>,
   "token_uncertainty": [
     { "token": "word", "score": <float 0-1> }
@@ -98,8 +119,8 @@ UPDATED JSON OUTPUT FORMAT
   "central_claim": "Yes, ...",
   "relations": [
     {
-      "source": "<claim>",
-      "type": "SUPPORTS",
+      "source": "<sub-argument>",
+      "type": "SUPPORTS" | "ATTACKS",
       "target": "central_claim",
       "score": <float 0-1>,
       "explanation": "<why this supports or attacks>",
@@ -122,18 +143,19 @@ UPDATED JSON OUTPUT FORMAT
 MANDATORY VALUE VARIATION RULE
 ===========================================================
 
-- You MUST NOT copy numeric placeholders from the JSON format.
-- All numeric uncertainty values MUST be freshly generated and meaningful.
-- If the example JSON shows 0.0, do NOT reuse 0.0.
-- Uncertainty values MUST NOT all be identical.
-### REMAINING RULES (unchanged)
-- Answer must be 2–4 paragraphs.
-- "overall_confidence" must be float 0–1.
-- Token scores go from 0 (low uncertainty) to 1 (high uncertainty)
-- Relations: equal number 2 SUPPORTS & 2 ATTACKS.
-- Links must be iframe-safe, 1–3 items, always HTTPS, no fabrications.
-- Recommended searches must follow uncertainty structure.
-- JSON must be valid (no comments, no trailing commas).
+- You MUST NOT copy numeric placeholders.
+- ALL uncertainty values (paragraph, token, relation) MUST vary meaningfully.
+- Values MUST NOT be identical.
+
+===========================================================
+OTHER RULES
+===========================================================
+
+- Answer must be 2 paragraphs total.
+- "overall_confidence" must remain a float 0–1 (alias for uncertainty).
+- Relations: exactly 2 SUPPORTS & 2 ATTACKS.
+- Links must be iframe-safe HTTPS.
+- JSON must be valid.
 `;
 
   // ============================================================

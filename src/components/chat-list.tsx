@@ -212,6 +212,33 @@ function RenderToken({ data, threshold }: { data: any; threshold: number }) {
 /* ----------------------------------------------------
    AssistantMessage
 ---------------------------------------------------- */
+/* ----------------------------------------------------
+   DISCLAIMER TEXT
+---------------------------------------------------- */
+function UncertaintyDisclaimer({ viewMode }: { viewMode: string }) {
+  const text =
+    viewMode === "baseline"
+      ? "This AI answer is shown normally, without any uncertainty indicators."
+      : viewMode === "paragraph"
+      ? "This AI answer includes a single uncertainty score that reflects how confident the model is in the overall response."
+      : viewMode === "token"
+      ? "This AI answer highlights individual words based on uncertainty, darker highlights indicate areas where the model is less confident."
+      : viewMode === "relation"
+      ? "This AI answer is broken into supporting and opposing arguments, each with its own uncertainty value that reflects how confident the model is in that part of the reasoning."
+      : "";
+
+  if (!text) return null;
+
+  return (
+    <p
+      className="mt-3 mb-4 text-[14px] text-neutral-700 italic leading-snug"
+      style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+    >
+      {text}
+    </p>
+  );
+}
+
 function AssistantMessage({
   message,
   gptData,
@@ -231,18 +258,126 @@ function AssistantMessage({
     gptData.links_paragraph.length > 0;
 
   return (
-    <div className="my-6 text-left text-black font-[Inter] overflow-visible"> {/* ★ changed */}
+    <div className="my-6 text-left text-black font-[Inter] overflow-visible">
+
+      {/* === PARAGRAPH & BASELINE === */}
       {(viewMode === 'paragraph' || viewMode === 'baseline') && (
         <RenderParagraph data={gptData} />
       )}
 
+      {/* === TOKEN VIEW === */}
       {viewMode === 'token' && (
-        <RenderToken data={gptData} threshold={tokenThreshold} />
+        <>
+          {/* copy the exact slider styling from PostTrialSurvey */}
+          <style jsx>{`
+            .pro-slider {
+              appearance: none;
+              -webkit-appearance: none;
+              -moz-appearance: none;
+              width: 100%;
+              height: 6px;
+              border-radius: 4px;
+              background: #cfd2d6;
+              outline: none;
+              box-shadow: inset 0 1px 2px rgba(0,0,0,0.1);
+              cursor: pointer;
+            }
+
+            .pro-slider::-webkit-slider-runnable-track {
+              background: #cfd2d6;
+              height: 6px;
+              border-radius: 4px;
+            }
+
+            .pro-slider::-webkit-slider-thumb {
+              -webkit-appearance: none;
+              width: 18px;
+              height: 18px;
+              border-radius: 50%;
+              background: #cfd2d6;
+              cursor: pointer;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+              transition: background 0.2s ease, transform 0.15s ease;
+            }
+
+            .pro-slider::-webkit-slider-thumb:hover {
+              transform: scale(1.05);
+            }
+
+            .pro-slider::-moz-range-track {
+              background: #cfd2d6;
+              height: 6px;
+              border-radius: 4px;
+            }
+
+            .pro-slider::-moz-range-thumb {
+              width: 18px;
+              height: 18px;
+              border-radius: 50%;
+              border: none;
+              background: #cfd2d6;
+              cursor: pointer;
+              box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+              transition: background 0.2s ease, transform 0.15s ease;
+            }
+
+            .pro-slider::-moz-range-thumb:hover {
+              transform: scale(1.05);
+            }
+          `}</style>
+
+          <RenderToken data={gptData} threshold={tokenThreshold} />
+
+          {/* SLIDER + LEGEND */}
+          <div className="mt-8">
+            {/* Slider */}
+            <div className="flex flex-col gap-2 mb-4">
+              <label
+                className="text-sm text-neutral-700 font-medium"
+                style={{ fontFamily: 'Inter, system-ui, sans-serif' }}
+              >
+                Highlight uncertainty above: {(tokenThreshold * 100).toFixed(0)}%
+              </label>
+
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.01}
+                value={tokenThreshold}
+                onChange={(e) => setTokenThreshold(parseFloat(e.target.value))}
+                className="pro-slider mt-2"
+              />
+            </div>
+
+            {/* LEGEND */}
+            <div className="mt-4">
+            <p className="text-xs text-neutral-600 mb-1" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+              Uncertainty Color Scale
+            </p>
+
+            <div
+              className="w-full h-3 rounded-full"
+              style={{
+                background:
+                  "linear-gradient(to right, rgba(255,200,200,0.20), rgba(255,110,110,0.90))"
+              }}
+            />
+            
+            <div className="flex justify-between text-[11px] text-neutral-500 mt-1"
+                style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+              <span>Low</span>
+              <span>High</span>
+            </div>
+          </div>
+
+          </div>
+        </>
       )}
 
       {/* === RELATION MODE === */}
       {viewMode === 'relation' && (
-        <div className="mt-6 w-full overflow-visible">  {/* ★ changed */}
+        <div className="mt-6 w-full overflow-visible">
           <FlowComponent
             centralClaim={gptData.central_claim}
             relations={gptData.relations}
@@ -251,8 +386,10 @@ function AssistantMessage({
         </div>
       )}
 
+      {/* RAW VIEW */}
       {viewMode === 'raw' && <RenderRaw message={message} />}
 
+      {/* Sources */}
       {showSources && (
         <div className="mt-8 fade-in text-gray-900 overflow-visible">
           <h2
@@ -270,10 +407,6 @@ function AssistantMessage({
             ))}
           </ul>
         </div>
-      )}
-
-      {viewMode === 'token' && (
-        <div className="mt-6">{/* token slider unchanged */}</div>
       )}
     </div>
   );
@@ -342,35 +475,56 @@ export function ChatList({
     [trial, setPreviewUrl, setPreviewPos]
   );
 
-  /* ★ Entire wrapper gets overflow-visible */
   return (
-    <div className="relative mx-auto px-0 font-[Inter] overflow-visible"> 
-      {parsedMessages.map(({ message, gptData }) => {
-        const id = message.id;
+    <div className="relative mx-auto px-0 font-[Inter] overflow-visible">
+      {parsedMessages.map(({ message, gptData }, index) => {
+  const id = message.id;
 
-        if (gptData) {
-          return (
-            <AssistantMessage
-              key={id}
-              message={message}
-              gptData={gptData}
-              viewMode={viewMode}
-              renderLink={renderLink}
-            />
-          );
-        }
+  // ────────────────────────────────────────────
+  // USER MESSAGE → render question + disclaimer
+  // ────────────────────────────────────────────
+  if (message.role === "user") {
+    const nextIsAssistant =
+      parsedMessages[index + 1] &&
+      parsedMessages[index + 1].message.role === "assistant";
 
-        return (
-          <ChatMessage
-            key={id}
-            message={message}
-            nodes={message.role === 'user' ? [] : nodes}
-            edges={message.role === 'user' ? [] : edges}
-            clickedNode={clickedNode}
-            labelToColor={labelToColor}
-          />
-        );
-      })}
+    return (
+      <div key={id}>
+        <ChatMessage
+          message={message}
+          nodes={[]}
+          edges={[]}
+          clickedNode={clickedNode}
+          labelToColor={labelToColor}
+        />
+
+        {/* Inject disclaimer ONLY if next message is assistant */}
+        {nextIsAssistant && (
+          <UncertaintyDisclaimer viewMode={viewMode} />
+        )}
+      </div>
+    );
+  }
+
+  // ────────────────────────────────────────────
+  // ASSISTANT MESSAGE → unchanged
+  // ────────────────────────────────────────────
+  if (gptData) {
+    return (
+      <AssistantMessage
+        key={id}
+        message={message}
+        gptData={gptData}
+        viewMode={viewMode}
+        renderLink={renderLink}
+      />
+    );
+  }
+
+  // fallback
+  return null;
+})}
+
 
       {previewUrl && (
         <div
