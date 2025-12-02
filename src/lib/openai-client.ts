@@ -112,10 +112,56 @@ EXPLANATION RULES (CRITICAL):
 - Explanations must NOT use the SUPPORT phrasing for ATTACKS, and must NOT use the ATTACK phrasing for SUPPORTS.
 - Explanations MUST match the type field exactly.
 
+===========================================================
+RELATION EXPLANATION FAIRNESS REQUIREMENT (NEW)
+===========================================================
+
+To ensure the relation-level condition does not introduce 
+information absent from other conditions:
+
+- Every SUPPORT or ATTACK explanation MUST be fully grounded 
+  in reasoning that already appears in the 2-paragraph "answer".
+- The explanation must NOT introduce new facts, new causal chains, 
+  new medical concepts, or new reasoning not stated in the paragraphs.
+- All reasoning used in explanations MUST be present in the paragraphs 
+  using similar wording.
+- Explanations MUST still follow the required templates:
+    “This supports the claim because …”
+    “This attacks the claim because …”
+- Explanations MUST remain concise (one sentence), but their content 
+  MUST be traceable to the main answer.
+- The paragraphs MUST therefore include all conceptual reasoning 
+  needed to justify each SUPPORT and ATTACK relation.
+
 GENERAL RULES:
 - Produce exactly 2 SUPPORTS and 2 ATTACKS.
 - Each explanation must be one sentence long.
 - Relation "score" values (0–1 uncertainty) MUST differ and MUST NOT all be 0.
+
+===========================================================
+INLINE CITATION REQUIREMENTS FOR MAIN TEXT (NEW)
+===========================================================
+
+The 2-paragraph "answer" MUST include inline numeric citations
+in the form [1], [2], [3], ... inside the text.
+
+RULES:
+- These numeric citations MUST correspond exactly to the order
+  of entries in "links_paragraph".
+- The first source in "links_paragraph" MUST be cited as [1],
+  the second as [2], and so on.
+- Citations MUST appear naturally within the sentences 
+  (e.g., “... which is supported by clinical observations [1].”).
+- Citations MUST be used at least once per source.
+- Citations MUST NOT appear in the "central_claim",
+  the relation explanations, or sub-arguments — ONLY in the 
+  2-paragraph "answer".
+- Citations MUST NOT be invented; they MUST correspond to 
+  real entries in "links_paragraph".
+- Citations MUST appear inline exactly as: [1], [2], [3].
+
+"links_paragraph" MUST contain at least as many entries as
+the number of citations used.
 
 ===========================================================
 UPDATED JSON OUTPUT FORMAT

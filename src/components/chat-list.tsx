@@ -55,7 +55,19 @@ const RenderRaw = ({ message }: { message: Message }) => (
 /* ----------------------------------------------------
    PARAGRAPH VIEW
 ---------------------------------------------------- */
-function RenderParagraph({ data }: { data: any }) {
+function RenderParagraph({
+  data,
+  trial,
+  hideTimeout,
+  setPreviewUrl,
+  setPreviewPos
+}: {
+  data: any;
+  trial: any;
+  hideTimeout: any;
+  setPreviewUrl: any;
+  setPreviewPos: any;
+}) {
   const { viewMode } = useViewMode();
   const paragraphs = useMemo(
     () => (data.answer || '').split(/\n\s*\n/).filter((p: string) => p.trim().length > 0),
@@ -69,11 +81,87 @@ function RenderParagraph({ data }: { data: any }) {
 
         return (
           <p key={pIdx} className="text-[17px] flex flex-wrap gap-1 mb-6 text-black">
-            {words.map((word, i) => (
-              <span key={i} className="inline-block">
-                {word + ' '}
-              </span>
-            ))}
+            {words.map((word, i) => {
+  // NEW robust citation parsing inside the word
+  const parts = [];
+  const citationRegex = /\[(\d+)\]/g;
+  let match;
+  let lastIndex = 0;
+
+  while ((match = citationRegex.exec(word)) !== null) {
+    const citeIndex = match.index;
+
+    // Push text before the citation
+    if (citeIndex > lastIndex) {
+      parts.push({
+        type: "text",
+        value: word.slice(lastIndex, citeIndex)
+      });
+    }
+
+    // Push citation itself
+    parts.push({
+      type: "cite",
+      number: parseInt(match[1], 10)
+    });
+
+    lastIndex = citationRegex.lastIndex;
+  }
+
+  // Push remaining text
+  if (lastIndex < word.length) {
+    parts.push({
+      type: "text",
+      value: word.slice(lastIndex)
+    });
+  }
+
+  // Render
+  return (
+    <span key={i} className="inline-block">
+      {parts.map((part, j) => {
+        if (part.type === "text") {
+          return <span key={j}>{part.value}</span>;
+        }
+
+        if (part.type === "cite") {
+          const src = data.links_paragraph?.[part.number - 1];
+          if (!src) return <span key={j}>[{part.number}]</span>;
+
+          return (
+            <a
+              key={j}
+              href={src.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline hover:opacity-80 cursor-pointer"
+              onClick={() => trial.recordExternalLink(src.url)}
+              onMouseEnter={(e) => {
+                if (hideTimeout.current) clearTimeout(hideTimeout.current);
+                setPreviewUrl(src.url);
+                setPreviewPos({
+                  x: e.clientX - 520,
+                  y: e.clientY - 100
+                });
+              }}
+              onMouseLeave={() => {
+                hideTimeout.current = setTimeout(() => {
+                  setPreviewUrl(null);
+                }, 250);
+              }}
+            >
+              [{part.number}]
+            </a>
+          );
+        }
+
+        return null;
+      })}
+      {" "}
+    </span>
+  );
+})}
+
           </p>
         );
       })}
@@ -238,7 +326,10 @@ function AssistantMessage({
   message,
   gptData,
   viewMode,
-  renderLink
+  renderLink,
+  hideTimeout,
+  setPreviewUrl,
+  setPreviewPos
 }: any) {
   const trial = useTrial();
   const [tokenThreshold, setTokenThreshold] = useState(0.5);
@@ -256,7 +347,13 @@ function AssistantMessage({
 
       {/* === PARAGRAPH & BASELINE === */}
       {(viewMode === 'paragraph' || viewMode === 'baseline') && (
-        <RenderParagraph data={gptData} />
+        <RenderParagraph
+        data={gptData}
+        trial={trial}
+        hideTimeout={hideTimeout}
+        setPreviewUrl={setPreviewUrl}
+        setPreviewPos={setPreviewPos}
+      />
       )}
 
       {/* === TOKEN VIEW === */}
@@ -469,8 +566,8 @@ export function ChatList({
             if (hideTimeout.current) clearTimeout(hideTimeout.current);
             setPreviewUrl(link.url);
             setPreviewPos({
-              x: e.clientX - 350,
-              y: e.clientY - 200
+              x: e.clientX - 520,
+              y: e.clientY - 100
             });
           }}
           onMouseLeave={() => {
@@ -521,12 +618,15 @@ export function ChatList({
   if (gptData) {
     return (
       <AssistantMessage
-        key={id}
-        message={message}
-        gptData={gptData}
-        viewMode={viewMode}
-        renderLink={renderLink}
-      />
+      key={id}
+      message={message}
+      gptData={gptData}
+      viewMode={viewMode}
+      renderLink={renderLink}
+      hideTimeout={hideTimeout}
+      setPreviewUrl={setPreviewUrl}
+      setPreviewPos={setPreviewPos}
+    />
     );
   }
 
