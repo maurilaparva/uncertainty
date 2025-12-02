@@ -150,28 +150,18 @@ function RenderToken({ data, threshold }: { data: any; threshold: number }) {
             const score = scoreMap.get(clean);
             const uncertain = typeof score === 'number';
 
-            let bgColor = 'transparent';
+            const HIGHLIGHT_COLOR = "rgba(255, 150, 150, 0.65)"; // constant color
+
+            let bgColor = "transparent";
             if (uncertain && score >= threshold) {
-              const denom = 1 - threshold || 1;
-              const norm = Math.min(1, Math.max(0, (score - threshold) / denom));
-
-              // Color stops matching the slider gradient
-              const low =  { r: 255, g: 200, b: 200, a: 0.20 };
-              const high = { r: 255, g: 110, b: 110, a: 0.90 };
-
-              // Interpolate between low → high based on norm
-              const r = low.r + (high.r - low.r) * norm;
-              const g = low.g + (high.g - low.g) * norm;
-              const b = low.b + (high.b - low.b) * norm;
-              const a = low.a + (high.a - low.a) * norm;
-
-              bgColor = `rgba(${r}, ${g}, ${b}, ${a})`;
+              bgColor = HIGHLIGHT_COLOR;
             }
+
 
             return (
               <span
                 key={id}
-                className="inline-block rounded px-1 py-[2px] transition-colors duration-150 cursor-help"
+                className="inline-block rounded px-1 py-[2px] transition-all duration-100 cursor-help"
                 style={{ backgroundColor: bgColor }}
                 onMouseEnter={(e) => {
                   if (!uncertain || typeof score !== 'number') return;
@@ -258,7 +248,6 @@ function AssistantMessage({
   }, [trial, message.id]);
 
   const showSources =
-    viewMode !== 'baseline' &&
     Array.isArray(gptData.links_paragraph) &&
     gptData.links_paragraph.length > 0;
 
@@ -355,26 +344,28 @@ function AssistantMessage({
               />
             </div>
 
-            {/* LEGEND */}
-            <div className="mt-4">
-            <p className="text-xs text-neutral-600 mb-1" style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
-              Uncertainty Color Scale
-            </p>
-
-            <div
-              className="w-full h-3 rounded-full"
-              style={{
-                background:
-                  "linear-gradient(to right, rgba(255,200,200,0.20), rgba(255,110,110,0.90))"
-              }}
-            />
-            
-            <div className="flex justify-between text-[11px] text-neutral-500 mt-1"
-                style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
-              <span>Low</span>
-              <span>High</span>
+            {/* SIMPLE LEGEND (NEW) */}
+            <div className="mt-4 p-3 border rounded-md bg-neutral-50">
+              <p
+                className="text-xs text-neutral-700 mb-2"
+                style={{ fontFamily: "Inter, system-ui, sans-serif" }}
+              >
+                Words highlighted in
+                <span
+                  style={{
+                    backgroundColor: "rgba(255,150,150,0.65)",
+                    padding: "2px 6px",
+                    borderRadius: "4px",
+                    marginLeft: "4px",
+                    marginRight: "4px"
+                  }}
+                >
+                  red
+                </span>
+                have uncertainty ≥ threshold.
+              </p>
             </div>
-          </div>
+
 
           </div>
         </>
@@ -382,14 +373,29 @@ function AssistantMessage({
 
       {/* === RELATION MODE === */}
       {viewMode === 'relation' && (
-        <div className="mt-6 w-full overflow-visible">
-          <FlowComponent
-            centralClaim={gptData.central_claim}
-            relations={gptData.relations}
-            overallConfidence={gptData.overall_uncertainty}
-          />
+      <div className="mt-6 w-full overflow-visible space-y-4">
+
+        <FlowComponent
+          centralClaim={gptData.central_claim}
+          relations={gptData.relations}
+          overallConfidence={gptData.overall_uncertainty}
+        />
+
+        {/* === RELATION LEGEND (NEW) === */}
+        <div className="p-3 border rounded-md bg-neutral-50 w-fit text-sm">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgb(180,255,180)' }}></span>
+            <span className="text-neutral-800">Supporting sub-argument</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="inline-block w-3 h-3 rounded-sm" style={{ backgroundColor: 'rgb(255,180,180)' }}></span>
+            <span className="text-neutral-800">Attacking sub-argument</span>
+          </div>
         </div>
-      )}
+
+      </div>
+    )}
 
       {/* RAW VIEW */}
       {viewMode === 'raw' && <RenderRaw message={message} />}
@@ -504,9 +510,7 @@ export function ChatList({
         />
 
         {/* Inject disclaimer ONLY if next message is assistant */}
-        {nextIsAssistant && (
-          <UncertaintyDisclaimer viewMode={viewMode} />
-        )}
+        
       </div>
     );
   }
