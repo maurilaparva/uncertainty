@@ -131,12 +131,79 @@ function RelationNode({ data }: any) {
             {label}
           </div>
 
-          {/* Larger explanation */}
+          {/* Sources for this relation */}
           {explanation && (
-            <div style={{ marginTop: 10, fontSize: 16 }}>
-              {explanation}
+            <div style={{ marginTop: 10, fontSize: 16, lineHeight: "1.45", color: "black" }}>
+              {(() => {
+                const text = explanation;
+                const parts: any[] = [];
+                const citationRegex = /\[(\d+)\]/g;
+
+                let lastIndex = 0;
+                let match;
+
+                while ((match = citationRegex.exec(text)) !== null) {
+                  const citeStart = match.index;
+                  const citeEnd = citationRegex.lastIndex;
+
+                  // push text before citation
+                  if (citeStart > lastIndex) {
+                    parts.push({
+                      type: "text",
+                      value: text.slice(lastIndex, citeStart),
+                    });
+                  }
+
+                  // push citation
+                  parts.push({
+                    type: "cite",
+                    number: parseInt(match[1], 10),
+                  });
+
+                  lastIndex = citeEnd;
+                }
+
+                // push remaining text
+                if (lastIndex < text.length) {
+                  parts.push({
+                    type: "text",
+                    value: text.slice(lastIndex),
+                  });
+                }
+
+                return parts.map((part, idx) => {
+                  if (part.type === "text") {
+                    return <span key={idx}>{part.value}</span>;
+                  }
+
+                  if (part.type === "cite") {
+                    const src = data.relation_links?.[part.number - 1];
+                    if (!src) return <span key={idx}>[{part.number}]</span>;
+
+                    return (
+                      <a
+                        key={idx}
+                        href={src.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          color: "#2563eb",
+                          textDecoration: "underline",
+                          cursor: "pointer"
+                        }}
+                      >
+                        [{part.number}]
+                      </a>
+                    );
+                  }
+
+                  return null;
+                });
+              })()}
             </div>
           )}
+
+
 
           {/* Uncertainty bar */}
           <div className="w-full h-2 bg-neutral-200 rounded-full overflow-hidden shadow-inner mt-4">
@@ -233,12 +300,13 @@ export default function FlowComponent({
         data: {
           label: rel.source,
           explanation: rel.explanation,
-          linksText: '',
+          relation_links: rel.relation_links || [],
           uncertainty: rel.score,
           bgColor: green,
           nodeRole: 'support'
         },
-        position: { x: 200, y: 250 + i * 400 }
+
+        position: { x: 200, y: 250 + i * 450 }
       })
 
       e.push({
@@ -277,12 +345,12 @@ export default function FlowComponent({
         data: {
           label: rel.source,
           explanation: rel.explanation,
-          linksText: '',
+          relation_links: rel.relation_links || [],
           uncertainty: rel.score,
           bgColor: red,
           nodeRole: 'attack'
         },
-        position: { x: 760, y: 250 + i * 400 }
+        position: { x: 760, y: 250 + i * 450 }
       })
 
       e.push({

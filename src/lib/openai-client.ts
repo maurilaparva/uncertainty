@@ -153,15 +153,24 @@ RULES:
 - Citations MUST appear naturally within the sentences 
   (e.g., “... which is supported by clinical observations [1].”).
 - Citations MUST be used at least once per source.
-- Citations MUST NOT appear in the "central_claim",
-  the relation explanations, or sub-arguments — ONLY in the 
-  2-paragraph "answer".
 - Citations MUST NOT be invented; they MUST correspond to 
   real entries in "links_paragraph".
+- Citations MUST NOT appear in the "central_claim" or the sub-argument text, but may appear in explanations for sub-argument text.
 - Citations MUST appear inline exactly as: [1], [2], [3].
 
 "links_paragraph" MUST contain at least as many entries as
 the number of citations used.
+
+RELATION EXPLANATION CITATIONS (UPDATED):
+
+- Relation explanations MAY include inline numeric citations like [1], [2], etc.
+- Include inline citations in at least one supporting and one attacking argument explanation.
+- These citations MUST correspond to entries in "links_paragraph".
+- They MUST use the same numbering as the citations inside the 2-paragraph answer.
+- Explanations MUST include at least one inline citation.
+- Citations MUST appear naturally within the sentence or at the end of the explanation.
+- Relation explanations MUST NOT invent citations that do not exist in "links_paragraph".
+
 
 ===========================================================
 UPDATED JSON OUTPUT FORMAT

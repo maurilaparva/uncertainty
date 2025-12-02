@@ -508,12 +508,13 @@ function AssistantMessage({
           </h2>
 
           <ul className="space-y-1">
-            {gptData.links_paragraph.map((lnk: any) => (
-              <li key={lnk.url} className="ml-1">
-                {renderLink(lnk)}
-              </li>
-            ))}
-          </ul>
+          {gptData.links_paragraph.map((lnk: any, idx: number) => (
+            <li key={lnk.url} className="ml-1 flex gap-2">
+              <span className="text-neutral-700 font-medium">[{idx + 1}]</span>
+              {renderLink(lnk)}
+            </li>
+          ))}
+        </ul>
         </div>
       )}
     </div>
