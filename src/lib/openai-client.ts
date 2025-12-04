@@ -113,7 +113,7 @@ EXPLANATION RULES (CRITICAL):
 - Explanations MUST match the type field exactly.
 
 ===========================================================
-RELATION EXPLANATION FAIRNESS REQUIREMENT (NEW)
+RELATION EXPLANATION FAIRNESS REQUIREMENT 
 ===========================================================
 
 To ensure the relation-level condition does not introduce 
