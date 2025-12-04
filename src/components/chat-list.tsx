@@ -3,7 +3,7 @@ import { Message } from 'ai';
 import { useViewMode } from './ui/view-mode';
 import { ChatMessage } from './chat-message';
 import { CustomGraphNode } from '../lib/types';
-
+import { createPortal } from "react-dom";
 import React, {
   useEffect,
   useState,
@@ -138,7 +138,7 @@ function RenderParagraph({
               onClick={() => trial.recordExternalLink(src.url)}
               onMouseEnter={(e) => {
                 if (hideTimeout.current) clearTimeout(hideTimeout.current);
-                setPreviewUrl(src.url);
+                setPreviewUrl(src.summary ?? src.title ?? src.url);
                 setPreviewPos({
                   x: e.clientX - 520,
                   y: e.clientY - 100
@@ -197,7 +197,19 @@ function RenderParagraph({
 /* ----------------------------------------------------
    TOKEN VIEW
 ---------------------------------------------------- */
-function RenderToken({ data, threshold }: { data: any; threshold: number }) {
+function RenderToken({
+  data,
+  threshold,
+  hideTimeout,
+  setPreviewUrl,
+  setPreviewPos
+}: {
+  data: any;
+  threshold: number;
+  hideTimeout: any;
+  setPreviewUrl: any;
+  setPreviewPos: any;
+}) {
   const text: string = data.answer ?? '';
   const tokenInfo = data.token_uncertainty || [];
   const scoreMap = useMemo(() => {
@@ -238,33 +250,114 @@ function RenderToken({ data, threshold }: { data: any; threshold: number }) {
             const score = scoreMap.get(clean);
             const uncertain = typeof score === 'number';
 
-            const HIGHLIGHT_COLOR = "rgba(255, 150, 150, 0.65)"; // constant color
-
             let bgColor = "transparent";
+
             if (uncertain && score >= threshold) {
-              bgColor = HIGHLIGHT_COLOR;
+              const mix = Math.min(1, score * 2.2);
+              const r = 255;
+              const g = 255 - mix * 180;
+              const b = 255 - mix * 180;
+              const opacity = 0.35 + mix * 0.55;
+              bgColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
             }
 
 
-            return (
-              <span
-                key={id}
-                className="inline-block rounded px-1 py-[2px] transition-all duration-100 cursor-help"
-                style={{ backgroundColor: bgColor }}
-                onMouseEnter={(e) => {
-                  if (!uncertain || typeof score !== 'number') return;
-                  setHoverInfo({
-                    score,
-                    x: e.pageX + 12,
-                    y: e.pageY + 12,
-                    token: clean || word
-                  });
-                }}
-                onMouseLeave={() => setHoverInfo(null)}
-              >
-                {word + ' '}
-              </span>
-            );
+
+
+
+
+            // --- NEW: split citations from word ---
+const citationRegex = /\[(\d+)\]/g;
+const parts = [];
+let lastIndex2 = 0;
+let m2;
+
+while ((m2 = citationRegex.exec(word)) !== null) {
+  const idx = m2.index;
+  const num = parseInt(m2[1], 10);
+
+  if (idx > lastIndex2) {
+    parts.push({ type: "text", value: word.slice(lastIndex2, idx) });
+  }
+
+  parts.push({ type: "cite", num });
+  lastIndex2 = citationRegex.lastIndex;
+}
+
+if (lastIndex2 < word.length) {
+  parts.push({ type: "text", value: word.slice(lastIndex2) });
+}
+
+// --- uncertainty highlight for ONLY the word ---
+return (
+  <span key={id} className="inline-flex items-center gap-1">
+    {parts.map((part, j) => {
+      if (part.type === "text") {
+        return (
+          <span
+            key={j}
+            className="inline-block rounded px-1 py-[2px] transition-all duration-100 cursor-help"
+            style={{ backgroundColor: bgColor }}
+            onMouseEnter={(e) => {
+              if (!uncertain || typeof score !== 'number') return;
+              setHoverInfo({
+                score,
+                x: e.clientX - 40,
+                y: e.clientY - 100,
+                token: clean || word
+              });
+            }}
+            onMouseLeave={() => setHoverInfo(null)}
+          >
+            {part.value}
+          </span>
+        );
+      }
+
+      if (part.type === "cite") {
+        const src = data.links_paragraph?.[part.num - 1];
+
+        if (!src)
+          return (
+            <span key={j} className="text-blue-600">
+              [{part.num}]
+            </span>
+          );
+
+        return (
+          <a
+            key={j}
+            href={src.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-blue-600 underline hover:opacity-80 cursor-pointer"
+            onMouseEnter={(e) => {
+              if (hideTimeout.current) clearTimeout(hideTimeout.current);
+              setPreviewUrl(src.summary ?? src.title ?? src.url);
+              setPreviewPos({
+                x: e.clientX - 520,
+                y: e.clientY - 100,
+              });
+            }}
+            onMouseLeave={() => {
+              hideTimeout.current = setTimeout(() => {
+                setPreviewUrl(null);
+              }, 250);
+            }}
+          >
+            [{part.num}]
+          </a>
+        );
+      }
+
+      return null;
+    })}
+
+    {" "}
+  </span>
+);
+
+
           })}
         </p>
       ))}
@@ -273,8 +366,8 @@ function RenderToken({ data, threshold }: { data: any; threshold: number }) {
         <div
           className="fixed z-50 bg-white border border-neutral-300 shadow-lg rounded-md px-2 py-1 text-[11px]"
           style={{
-            top: hoverInfo.y - 150,
-            left: hoverInfo.x - 410,
+            top: hoverInfo.y,
+            left: hoverInfo.x,
             maxWidth: '220px',
             fontFamily: 'Inter, system-ui, sans-serif',
             letterSpacing: '-0.01em'
@@ -417,7 +510,13 @@ function AssistantMessage({
             }
           `}</style>
 
-          <RenderToken data={gptData} threshold={tokenThreshold} />
+          <RenderToken
+            data={gptData}
+            threshold={tokenThreshold}
+            hideTimeout={hideTimeout}
+            setPreviewUrl={setPreviewUrl}
+            setPreviewPos={setPreviewPos}
+          />
 
           {/* SLIDER + LEGEND */}
           <div className="mt-8">
@@ -440,6 +539,20 @@ function AssistantMessage({
                 className="pro-slider mt-2"
               />
             </div>
+            {/* GRADIENT COLOR SCALE (NEW) */}
+            <div className="mt-4">
+              <div className="w-full h-3 rounded-md"
+                style={{
+                  background: "linear-gradient(to right, rgba(255,255,255,1), rgba(255,200,200,0.8), rgba(255,150,150,0.85), rgba(255,80,80,0.95), rgba(255,0,0,1))"
+                }}
+              />
+              <div className="flex justify-between text-[11px] text-neutral-600 mt-1 px-1"
+                  style={{ fontFamily: "Inter, system-ui, sans-serif" }}>
+                <span>Low uncertainty</span>
+                <span>High uncertainty</span>
+              </div>
+            </div>
+
 
             {/* SIMPLE LEGEND (NEW) */}
             <div className="mt-4 p-3 border rounded-md bg-neutral-50">
@@ -565,10 +678,10 @@ export function ChatList({
           onClick={() => trial.recordExternalLink(link.url)}
           onMouseEnter={(e) => {
             if (hideTimeout.current) clearTimeout(hideTimeout.current);
-            setPreviewUrl(link.url);
+            setPreviewUrl(link.summary ?? link.title ?? link.url);
             setPreviewPos({
-              x: e.clientX - 520,
-              y: e.clientY - 100
+              x: e.clientX - 540,
+              y: e.clientY - 300
             });
           }}
           onMouseLeave={() => {

@@ -35,9 +35,9 @@ ABSOLUTE RULES (CRITICAL FOR EXPERIMENT)
 ===========================================================
 
 1. The answer MUST match AI_ANSWER_LABEL, even if medically incorrect.
-2. The FIRST word of ONLY the first paragraph MUST be exactly "Yes," or "No," matching AI_ANSWER_LABEL.
+2. The first paragraph MUST NOT begin with "Yes," or "No,". However, its reasoning must match AI_ANSWER_LABEL.
 3. All other paragraphs MUST NOT start with "Yes," or "No,".
-4. The "central_claim" MUST start with the same "Yes," or "No," matching AI_ANSWER_LABEL.
+4. The "central_claim" MUST NOT begin with "Yes," or "No," but its meaning MUST still align with AI_ANSWER_LABEL.
 5. SUPPORTS relations MUST support the AI_ANSWER_LABEL.
 6. ATTACKS relations MUST challenge the AI_ANSWER_LABEL.
 7. You must NOT attempt medical correctness when AI_ANSWER_LABEL contradicts it.
@@ -171,6 +171,16 @@ RELATION EXPLANATION CITATIONS (UPDATED):
 - Citations MUST appear naturally within the sentence or at the end of the explanation.
 - Relation explanations MUST NOT invent citations that do not exist in "links_paragraph".
 
+SOURCE SUMMARY REQUIREMENTS:
+-The summary MUST BE 1-2 short sentences.
+-The summary MUST describe what information the source contains.
+-The summary MUST NOT introduce new facts beyond what the 2-paragraph answer already implies.
+-The summary MUST be neutral and factual (not supporting or attacking the claim directly).
+-The summary MUST be suitable for display as a tooltip.
+
+OU MUST ALWAYS RETURN THE FIELD "answer".
+- "answer" must contain exactly 2 paragraphs of reasoning.
+
 
 ===========================================================
 UPDATED JSON OUTPUT FORMAT
@@ -182,7 +192,7 @@ UPDATED JSON OUTPUT FORMAT
   "token_uncertainty": [
     { "token": "word", "score": <float 0-1> }
   ],
-  "central_claim": "Yes, ...",
+  "central_claim": "<central claim text matching AI_ANSWER_LABEL but NOT starting with Yes/No>",
   "relations": [
     {
       "source": "<sub-argument>",
@@ -196,7 +206,11 @@ UPDATED JSON OUTPUT FORMAT
     }
   ],
   "links_paragraph": [
-    { "url": "https://...", "title": "..." }
+    { 
+    "url": "https://...", 
+    "title": "...",
+    "summary": "<1–2 sentence description of what this source contains>"
+  }
   ],
   "recommended_searches": {
     "paragraph_level": [],

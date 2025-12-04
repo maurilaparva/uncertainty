@@ -146,7 +146,7 @@ function ChatInner({ id, initialMessages }) {
       Correct: trial.correctness ? 'TRUE' : 'FALSE',
       Agree: trial.agreement ? 'TRUE' : 'FALSE',
       Time: trial.computeResponseTime() / 1000,
-      LinkClick: trial.linkClickCount > 0 ? 'TRUE' : 'FALSE',
+      LinkClick: Number(trial.linkClickCount ?? 0),
 
       RawData: {
         surveyData,
