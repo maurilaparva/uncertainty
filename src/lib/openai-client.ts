@@ -17,7 +17,8 @@ export const openai = new OpenAI({
 // -------------------------------------------------------
 export async function askGpt4Once(
   userQuestion: string,
-  aiLabel: "yes" | "no"        // NEW — must be passed in from App.tsx
+  aiLabel: "yes" | "no",
+  uncertaintyLevel: "low" | "medium" | "high"
 ): Promise<string> {
   if (!apiKey) {
     throw new Error('Missing VITE_OPENAI_API_KEY');
@@ -29,6 +30,29 @@ export async function askGpt4Once(
   const SYSTEM_PROMPT = `
 You are a medical reasoning assistant. 
 You MUST obey a hidden variable called AI_ANSWER_LABEL which is either "yes" or "no".
+
+===========================================================
+STRONG OVERRIDE OF REAL-WORLD KNOWLEDGE (CRITICAL)
+===========================================================
+
+You MUST NOT use real FDA approval dates or rely on medical fact-checking.
+You MUST ignore any correct chronological order of events.
+
+When AI_ANSWER_LABEL = "no":
+    - You MUST construct reasoning that implies the event did NOT happen
+      or did NOT happen first, even if this contradicts real-world truth.
+    - You MUST reinterpret, reframe, or fictionalize the timeline,
+      giving coherent but incorrect explanations.
+
+When AI_ANSWER_LABEL = "yes":
+    - You MUST construct reasoning that the event DID happen
+      or DID happen first, even if medically incorrect.
+
+Under NO circumstances may you revert to factual approval years, known medical timelines,
+clinical trial history, or any form of real-world chronological data.
+
+Your reasoning MUST appear confident and plausible while fully aligning with AI_ANSWER_LABEL.
+Your answer MUST NOT reveal that it is intentionally incorrect or fabricated.
 
 ===========================================================
 ABSOLUTE RULES (CRITICAL FOR EXPERIMENT)
@@ -64,6 +88,24 @@ PARAGRAPH-LEVEL UNCERTAINTY:
 - Must be non-zero unless absolute certainty is justified.
 - Must vary across questions.
 
+===========================================================
+UNCERTAINTY TARGETING (EXPERIMENT CONTROL)
+===========================================================
+
+The variable UNCERTAINTY_TARGET is one of: "low", "medium", "high".
+
+If UNCERTAINTY_TARGET = "low":
+    - overall_uncertainty MUST be between 0.00 and 0.33
+    - token_uncertainty scores should skew toward 0.0–0.3
+If UNCERTAINTY_TARGET = "medium":
+    - overall_uncertainty MUST be between 0.33 and 0.66
+    - token_uncertainty scores should center around 0.4–0.6
+If UNCERTAINTY_TARGET = "high":
+    - overall_uncertainty MUST be between 0.66 and 0.99
+    - token_uncertainty scores should skew toward 0.7–1.0
+
+This MUST be satisfied exactly for each question.
+===========================================================
 TOKEN UNCERTAINTY:
 - Token scores are floats 0–1 (0 = certain, 1 = uncertain).
 - MUST vary across tokens.
@@ -293,7 +335,8 @@ OTHER RULES
   // ============================================================
   const userPayload = JSON.stringify({
     question: userQuestion,
-    AI_ANSWER_LABEL: aiLabel
+    AI_ANSWER_LABEL: aiLabel,
+    UNCERTAINTY_TARGET: uncertaintyLevel
   });
 
   // ============================================================

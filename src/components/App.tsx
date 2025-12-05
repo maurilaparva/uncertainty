@@ -68,6 +68,16 @@ const TRUE_TABLE: Record<
     ai: 'no',
   }
 };
+const UNCERTAINTY_TARGETS: Record<string, "low" | "medium" | "high"> = {
+  'did dupilumab receive fda approval for asthma before chronic rhinosinusitis': 'medium',
+  'is there more antihistamine in benadryl than rhinocort': 'high',
+  'is deep vein thrombosis a common side effect of ocella': 'low',
+  'is spironolactone an fdaapproved drug for treating acne': 'medium',
+  'are both simvastatin and ambien drugs recommended to be taken at night': 'low',
+  'is uveitis a common symptom of ankylosing spondylitis': 'medium',
+  'is fever a common symptom of jock itch': 'high',
+  'can an adult who has not had chickenpox get shingles': 'medium'
+};
 
 const QUESTION_IDS = Object.keys(TRUE_TABLE).reduce((acc, key, i) => {
   acc[key] = `q${i + 1}`;
@@ -239,7 +249,13 @@ function ChatInner({ id, initialMessages }) {
   setMessages((prev) => [...prev, newUser, tempAssistant]);
 
   try {
-    const raw = await askGpt4Once(userText, entry.ai);
+    const uncertaintyLevel = UNCERTAINTY_TARGETS[normalized] ?? "medium";
+
+    const raw = await askGpt4Once(
+      userText,
+      entry.ai,
+      uncertaintyLevel
+    );
     const resString = typeof raw === 'string' ? raw : JSON.stringify(raw);
 
     setMessages((prev) =>

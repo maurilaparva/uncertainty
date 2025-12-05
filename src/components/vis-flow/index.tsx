@@ -66,7 +66,12 @@ function RelationNode({ data }: any) {
   const primarySource = data.relation_links?.[0]
 
   return (
-    <div style={{ position: 'relative' }}>
+    <div
+      style={{ position: 'relative' }}
+      // ✅ Drive tooltip from the whole node, not just the link
+      onMouseEnter={() => setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
       {/* Central claim handles */}
       <Handle
         id="left-target"
@@ -144,14 +149,14 @@ function RelationNode({ data }: any) {
 
                 if (citeStart > lastIndex) {
                   parts.push({
-                    type: "text",
-                    value: text.slice(lastIndex, citeStart),
+                    type: 'text',
+                    value: text.slice(lastIndex, citeStart)
                   })
                 }
 
                 parts.push({
-                  type: "cite",
-                  number: parseInt(match[1], 10),
+                  type: 'cite',
+                  number: parseInt(match[1], 10)
                 })
 
                 lastIndex = citeEnd
@@ -159,17 +164,17 @@ function RelationNode({ data }: any) {
 
               if (lastIndex < text.length) {
                 parts.push({
-                  type: "text",
-                  value: text.slice(lastIndex),
+                  type: 'text',
+                  value: text.slice(lastIndex)
                 })
               }
 
               return parts.map((part, idx) => {
-                if (part.type === "text") {
+                if (part.type === 'text') {
                   return <span key={idx}>{part.value}</span>
                 }
 
-                if (part.type === "cite") {
+                if (part.type === 'cite') {
                   // ALWAYS USE relation_links[0]
                   const src = primarySource
                   if (!src) return <span key={idx}>[{part.number}]</span>
@@ -181,19 +186,16 @@ function RelationNode({ data }: any) {
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{
-                        color: "#2563eb",
-                        textDecoration: "underline",
-                        cursor: "pointer",
-                        userSelect: "text",
-                        pointerEvents: "auto",
-                        position: "relative",
+                        color: '#2563eb',
+                        textDecoration: 'underline',
+                        cursor: 'pointer',
+                        userSelect: 'text',
+                        pointerEvents: 'auto',
+                        position: 'relative',
                         zIndex: 9999
                       }}
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.stopPropagation()}
-                      // NEW: show tooltip on hover for LABEL citations
-                      onMouseEnter={() => setShowTooltip(true)}
-                      onMouseLeave={() => setShowTooltip(false)}
                     >
                       [{part.number}]
                     </a>
@@ -207,7 +209,7 @@ function RelationNode({ data }: any) {
 
           {/* EXPLANATION WITH CITATIONS (NO TOOLTIP HERE) */}
           {explanation && (
-            <div style={{ marginTop: 10, fontSize: 16, lineHeight: "1.45", color: "black" }}>
+            <div style={{ marginTop: 10, fontSize: 16, lineHeight: '1.45', color: 'black' }}>
               {(() => {
                 const text = explanation
                 const parts: any[] = []
@@ -222,14 +224,14 @@ function RelationNode({ data }: any) {
 
                   if (citeStart > lastIndex) {
                     parts.push({
-                      type: "text",
-                      value: text.slice(lastIndex, citeStart),
+                      type: 'text',
+                      value: text.slice(lastIndex, citeStart)
                     })
                   }
 
                   parts.push({
-                    type: "cite",
-                    number: parseInt(match[1], 10),
+                    type: 'cite',
+                    number: parseInt(match[1], 10)
                   })
 
                   lastIndex = citeEnd
@@ -237,18 +239,17 @@ function RelationNode({ data }: any) {
 
                 if (lastIndex < text.length) {
                   parts.push({
-                    type: "text",
-                    value: text.slice(lastIndex),
+                    type: 'text',
+                    value: text.slice(lastIndex)
                   })
                 }
 
                 return parts.map((part, idx) => {
-                  if (part.type === "text") {
+                  if (part.type === 'text') {
                     return <span key={idx}>{part.value}</span>
                   }
 
-                  if (part.type === "cite") {
-                    // ALWAYS USE relation_links[0]
+                  if (part.type === 'cite') {
                     const src = primarySource
                     if (!src) return <span key={idx}>[{part.number}]</span>
 
@@ -259,12 +260,12 @@ function RelationNode({ data }: any) {
                         target="_blank"
                         rel="noopener noreferrer"
                         style={{
-                          color: "#2563eb",
-                          textDecoration: "underline",
-                          cursor: "pointer",
-                          userSelect: "text",
-                          pointerEvents: "auto",
-                          position: "relative",
+                          color: '#2563eb',
+                          textDecoration: 'underline',
+                          cursor: 'pointer',
+                          userSelect: 'text',
+                          pointerEvents: 'auto',
+                          position: 'relative',
                           zIndex: 9999
                         }}
                         onMouseDown={(e) => e.stopPropagation()}
@@ -307,7 +308,7 @@ function RelationNode({ data }: any) {
         </div>
       </div>
 
-      {/* NEW: Node-attached tooltip (no link, bold title + summary) */}
+      {/* Node-attached tooltip (no link, bold title + summary) */}
       {showTooltip && primarySource && (
         <div
           style={{
@@ -372,13 +373,13 @@ export default function FlowComponent({
     }
 
     const v0 = 1 - overallConfidence
-    const supports = relations.filter(r => r.type === 'SUPPORTS')
-    const attacks = relations.filter(r => r.type === 'ATTACKS')
+    const supports = relations.filter((r) => r.type === 'SUPPORTS')
+    const attacks = relations.filter((r) => r.type === 'ATTACKS')
 
     const finalConfidence = computeFinalClaimConfidence(
       v0,
-      supports.map(r => 1 - r.score),
-      attacks.map(r => 1 - r.score)
+      supports.map((r) => 1 - r.score),
+      attacks.map((r) => 1 - r.score)
     )
 
     const centralUncertainty = 1 - finalConfidence
@@ -421,7 +422,7 @@ export default function FlowComponent({
           bgColor: green,
           nodeRole: 'support'
         },
-        position: { x: 200, y: 250 + i * 450 }
+        position: { x: 200, y: 250 + i * 500 }
       })
 
       e.push({
