@@ -132,6 +132,7 @@ Each relation's "source" text MUST cite at least one valid number, and this cita
 - Citations MUST NOT appear in the central_claim.
 - Citations MUST NOT appear in the explanation text under any circumstances.
 - If a relation's "source" text does not contain a numeric citation, the output is invalid.
+- Every entry in "relation_links" MUST include a 1–2 sentence "summary" field, exactly like entries in "links_paragraph". The summary must accurately describe what the source contains in a neutral, non-argumentative way.
 
 
 
@@ -221,7 +222,7 @@ UPDATED JSON OUTPUT FORMAT
       "score": <float 0-1>,
       "explanation": "<why this supports or attacks>",
       "relation_links": [
-        { "url": "https://...", "title": "..." }
+        { "url": "https://...", "title": "..." , "summary": "<1–2 sentence description of what this source contains>" }
       ]
     }
   ],

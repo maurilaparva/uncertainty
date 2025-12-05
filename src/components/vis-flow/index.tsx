@@ -20,7 +20,7 @@ interface Relation {
   type: 'SUPPORTS' | 'ATTACKS'
   score: number
   explanation: string
-  relation_links: { url: string; title?: string }[]
+  relation_links: { url: string; title?: string; summary?: string }[]
 }
 
 interface FlowProps {
@@ -59,6 +59,11 @@ function RelationNode({ data }: any) {
   const isCentral = nodeRole === 'central'
   const isSupport = nodeRole === 'support'
   const isAttack = nodeRole === 'attack'
+
+  // NEW: tooltip state (node-attached)
+  const [showTooltip, setShowTooltip] = useState(false)
+
+  const primarySource = data.relation_links?.[0]
 
   return (
     <div style={{ position: 'relative' }}>
@@ -166,7 +171,7 @@ function RelationNode({ data }: any) {
 
                 if (part.type === "cite") {
                   // ALWAYS USE relation_links[0]
-                  const src = data.relation_links?.[0]
+                  const src = primarySource
                   if (!src) return <span key={idx}>[{part.number}]</span>
 
                   return (
@@ -186,6 +191,9 @@ function RelationNode({ data }: any) {
                       }}
                       onMouseDown={(e) => e.stopPropagation()}
                       onClick={(e) => e.stopPropagation()}
+                      // NEW: show tooltip on hover for LABEL citations
+                      onMouseEnter={() => setShowTooltip(true)}
+                      onMouseLeave={() => setShowTooltip(false)}
                     >
                       [{part.number}]
                     </a>
@@ -197,7 +205,7 @@ function RelationNode({ data }: any) {
             })()}
           </div>
 
-          {/* EXPLANATION WITH CITATIONS */}
+          {/* EXPLANATION WITH CITATIONS (NO TOOLTIP HERE) */}
           {explanation && (
             <div style={{ marginTop: 10, fontSize: 16, lineHeight: "1.45", color: "black" }}>
               {(() => {
@@ -241,7 +249,7 @@ function RelationNode({ data }: any) {
 
                   if (part.type === "cite") {
                     // ALWAYS USE relation_links[0]
-                    const src = data.relation_links?.[0]
+                    const src = primarySource
                     if (!src) return <span key={idx}>[{part.number}]</span>
 
                     return (
@@ -298,6 +306,47 @@ function RelationNode({ data }: any) {
           </p>
         </div>
       </div>
+
+      {/* NEW: Node-attached tooltip (no link, bold title + summary) */}
+      {showTooltip && primarySource && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 280, // a bit to the right of the node (~260 width + padding)
+            maxWidth: 260,
+            background: 'white',
+            border: '1px solid rgba(0,0,0,0.18)',
+            borderRadius: 8,
+            boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
+            padding: 10,
+            zIndex: 9999,
+            fontFamily: 'Inter, system-ui, sans-serif'
+          }}
+        >
+          <div
+            style={{
+              fontWeight: 700,
+              fontSize: 13,
+              marginBottom: 4,
+              color: '#111827'
+            }}
+          >
+            {primarySource.title || 'Source'}
+          </div>
+          {primarySource.summary && (
+            <div
+              style={{
+                fontSize: 13,
+                lineHeight: 1.4,
+                color: '#374151'
+              }}
+            >
+              {primarySource.summary}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }
