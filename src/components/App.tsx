@@ -13,81 +13,68 @@ import { ChatScrollAnchor } from './chat-scroll-anchors.tsx';
 import { useNodesState, useEdgesState } from 'reactflow';
 import { useAtom } from 'jotai';
 import { viewModeAtom } from '../lib/state.ts';
-
 import { Button } from './ui/button.tsx';
+
 import 'reactflow/dist/style.css';
 
 import { askGpt4Once } from '../lib/openai-client.ts';
 import { CustomGraphNode, CustomGraphEdge } from '../lib/types.ts';
-
 import { FROZEN_RESPONSES } from '../lib/frozenResponses.ts';
 import { TrialProvider, useTrial } from '../lib/useTrial.tsx';
 
-/* =========================================================================
-   NORMALIZATION (punctuation-free, space-collapsed)
-   ========================================================================= */
+/* --------------------- Normalization --------------------- */
 const normalizeQuestion = (q: string) =>
   q
     .toLowerCase()
     .trim()
-    .replace(/[^\w\s]/g, '') // remove punctuation
-    .replace(/\s+/g, ' ');   // collapse multiple spaces
+    .replace(/[^\w\s]/g, '')
+    .replace(/\s+/g, ' ');
 
-/* =========================================================================
-   TRUE_TABLE (normalized keys, NO PUNCTUATION)
-   ========================================================================= */
-
-
-const TRUE_TABLE: Record<string, { gt: 'yes' | 'no'; ai: 'yes' | 'no' }> = {
+/* --------------------- Truth table --------------------- */
+const TRUE_TABLE: Record<
+  string,
+  { gt: 'yes' | 'no'; ai: 'yes' | 'no' }
+> = {
   'did dupilumab receive fda approval for asthma before chronic rhinosinusitis': {
     gt: 'yes',
     ai: 'no',
   },
-
   'is there more antihistamine in benadryl than rhinocort': {
     gt: 'yes',
     ai: 'no',
   },
-
   'is deep vein thrombosis a common side effect of ocella': {
     gt: 'no',
     ai: 'yes',
   },
-
-  // fixed typo to match normalized user question
   'is spironolactone an fdaapproved drug for treating acne': {
     gt: 'no',
     ai: 'yes',
   },
-
   'are both simvastatin and ambien drugs recommended to be taken at night': {
     gt: 'yes',
     ai: 'yes',
   },
-
   'is uveitis a common symptom of ankylosing spondylitis': {
     gt: 'yes',
     ai: 'yes',
   },
-
   'is fever a common symptom of jock itch': {
     gt: 'no',
     ai: 'no',
   },
-
   'can an adult who has not had chickenpox get shingles': {
     gt: 'no',
     ai: 'no',
-  },
+  }
 };
-const QUESTION_IDS = Object.keys(TRUE_TABLE).reduce((acc, key, idx) => {
-  acc[key] = `q${idx + 1}`;
+
+const QUESTION_IDS = Object.keys(TRUE_TABLE).reduce((acc, key, i) => {
+  acc[key] = `q${i + 1}`;
   return acc;
 }, {} as Record<string, string>);
 
-/* =========================================================================
-   WRAPPER
-   ========================================================================= */
+/* --------------------- Provider wrapper --------------------- */
 export function Chat(props) {
   return (
     <TrialProvider>
@@ -96,9 +83,9 @@ export function Chat(props) {
   );
 }
 
-/* =========================================================================
+/* ============================================================
    MAIN COMPONENT
-   ========================================================================= */
+============================================================ */
 function ChatInner({ id, initialMessages }) {
   const hasOpenAiKey = !!import.meta.env.VITE_OPENAI_API_KEY;
   const trial = useTrial();
@@ -113,8 +100,6 @@ function ChatInner({ id, initialMessages }) {
 
   const [qaCache, setQaCache] = useState<Record<string, string>>({});
   const [showSurvey, setShowSurvey] = useState(false);
-  const [previousMode, setPreviousMode] =
-    useState<'paragraph' | 'token' | 'relation' | 'raw'>('paragraph');
 
   const [savedSearches, setSavedSearches] = useLocalStorage(
     'recommended-searches',
@@ -124,9 +109,7 @@ function ChatInner({ id, initialMessages }) {
   const [previewToken] = useLocalStorage('ai-token', null);
   const [serperToken] = useLocalStorage('serper-token', null);
 
-  /* =========================================================================
-     SUBMIT TRIAL → Google Sheets
-     ========================================================================= */
+  /* ---------------- Submit trial to Google Sheets ---------------- */
   async function submitTrialToSheet(surveyData) {
     const WEB_APP_URL =
       'https://script.google.com/macros/s/AKfycbw3x92gcd2Fov1j57tF-grx-bBnxpCuI_OI6y4j5MbCppRhw_RKTqf68_y9CN8VaBWz/exec';
@@ -139,19 +122,18 @@ function ChatInner({ id, initialMessages }) {
       finalAnswer: surveyData.finalAnswer,
       ConfidenceAI: surveyData.aiConfidence,
       ConfidenceAnswer: surveyData.selfConfidence,
+
       UseAI: surveyData.useAI ? 'TRUE' : 'FALSE',
       UseLink: surveyData.useLink ? 'TRUE' : 'FALSE',
       UseInternet: surveyData.useInternet ? 'TRUE' : 'FALSE',
 
       Correct: trial.correctness ? 'TRUE' : 'FALSE',
       Agree: trial.agreement ? 'TRUE' : 'FALSE',
+
       Time: trial.computeResponseTime() / 1000,
       LinkClick: Number(trial.linkClickCount ?? 0),
 
-      RawData: {
-        surveyData,
-        trialState: trial,
-      },
+      RawData: { surveyData, trialState: trial }
     };
 
     try {
@@ -159,154 +141,147 @@ function ChatInner({ id, initialMessages }) {
         method: 'POST',
         mode: 'no-cors',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify(body)
       });
     } catch (err) {
       console.error('Failed to submit trial:', err);
     }
   }
 
-  /* =========================================================================
-     APPEND (user submits question)
-     ========================================================================= */
-  const append = async (msg: any) => {
-    const userText = typeof msg === 'string' ? msg : msg.content ?? '';
-    if (!userText.trim()) return;
+  /* ---------------- When user submits a question ---------------- */
+ const append = async (msg: any) => {
+  const userText = typeof msg === 'string' ? msg : msg.content ?? '';
+  if (!userText.trim()) return;
 
-    const normalized = normalizeQuestion(userText);
-    trial.setQuestionId(QUESTION_IDS[normalized]);
+  const normalized = normalizeQuestion(userText);
+  trial.setQuestionId(QUESTION_IDS[normalized]);
 
-    // Look up correctness + AI label from table
-    const entry = TRUE_TABLE[normalized];
-    let aiLabel: 'yes' | 'no' | null = null;
+  const entry = TRUE_TABLE[normalized];
+  if (!entry) {
+    toast.error('Question not found in TRUE_TABLE');
+    return;
+  }
 
-    if (entry) {
-      aiLabel = entry.ai;
-      // store ground truth + AI label in trial context state
-      trial.setCorrectAnswer(entry.gt);
-      trial.setAiAnswer(entry.ai);
-    } else {
-      toast.error('Question not found in TRUE_TABLE');
-      return;
-    }
+  trial.setCorrectAnswer(entry.gt);
+  trial.setAiAnswer(entry.ai);
 
-    const newUser: Message = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: userText,
-    };
-
-    /* DEMO MODE (frozen responses) */
-    if (useFrozen) {
-      const frozen = FROZEN_RESPONSES[normalized];
-      if (!frozen) {
-        toast.error('No frozen response found.');
-        return;
-      }
-
-      const resString = JSON.stringify(frozen);
-
-      const newAssistant: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: resString,
-      };
-
-      if (frozen.recommended_searches) {
-        setSavedSearches(frozen.recommended_searches);
-      }
-
-      setQaCache((p) => ({ ...p, [normalized]: resString }));
-      setMessages((prev) => [...prev, newUser, newAssistant]);
-      return;
-    }
-
-    /* LIVE MODE (GPT-4o-mini with forced label) */
-    if (!hasOpenAiKey) {
-      toast.error('Missing OpenAI key.');
-      return;
-    }
-
-    // Use cached JSON if we already asked GPT for this question+label
-    if (qaCache[normalized]) {
-      const cached = qaCache[normalized];
-
-      const cachedAssistant: Message = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: cached,
-      };
-
-      try {
-        const json = JSON.parse(cached);
-        if (json?.recommended_searches) {
-          setSavedSearches(json.recommended_searches);
-        }
-      } catch {
-        // ignore parse failures here; we still show the raw content
-      }
-
-      setMessages((prev) => [...prev, newUser, cachedAssistant]);
-      return;
-    }
-
-    if (!aiLabel) {
-      toast.error('Internal error: missing AI label for this question.');
-      return;
-    }
-
-    setIsLoading(true);
-
-    const tempAssistant: Message = {
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content: 'Generating answer…',
-    };
-
-    setMessages((prev) => [...prev, newUser, tempAssistant]);
-
-    try {
-      const raw = await askGpt4Once(userText, aiLabel);
-      const resString = typeof raw === 'string' ? raw : JSON.stringify(raw);
-
-      setMessages((prev) =>
-        prev.map((m) =>
-          m.id === tempAssistant.id ? { ...m, content: resString } : m
-        )
-      );
-
-      setQaCache((p) => ({ ...p, [normalized]: resString }));
-
-      try {
-        const json = JSON.parse(resString);
-        if (json?.recommended_searches) {
-          setSavedSearches(json.recommended_searches);
-        }
-      } catch {
-        // ignore parse error; still show answer text
-      }
-    } catch {
-      toast.error('GPT-4 failed.');
-      setMessages((prev) => prev.filter((m) => m.id !== tempAssistant.id));
-    } finally {
-      setIsLoading(false);
-    }
+  const newUser: Message = {
+    id: crypto.randomUUID(),
+    role: 'user',
+    content: userText,
   };
 
-  /* SHOW SURVEY */
-  const handleBackToHome = useCallback(() => {
-    setPreviousMode(viewMode);
-    setShowSurvey(true);
-  }, [viewMode]);
+  /* FROZEN MODE */
+  if (useFrozen) {
+    const frozen = FROZEN_RESPONSES[normalized];
+    if (!frozen) {
+      toast.error('No frozen response found.');
+      return;
+    }
 
-  /* =========================================================================
+    const resString = JSON.stringify(frozen);
+    const newAssistant: Message = {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: resString,
+    };
+
+    if (frozen.recommended_searches) {
+      setSavedSearches(frozen.recommended_searches);
+    }
+
+    setQaCache((p) => ({ ...p, [normalized]: resString }));
+    setMessages((prev) => [...prev, newUser, newAssistant]);
+
+    // ⭐ NEW: show survey immediately
+    setShowSurvey(true);
+    return;
+  }
+
+  /* LIVE MODE */
+  if (!hasOpenAiKey) {
+    toast.error('Missing OpenAI key.');
+    return;
+  }
+
+  if (qaCache[normalized]) {
+    const cached = qaCache[normalized];
+
+    const cachedAssistant: Message = {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: cached,
+    };
+
+    try {
+      const json = JSON.parse(cached);
+      if (json?.recommended_searches) {
+        setSavedSearches(json.recommended_searches);
+      }
+    } catch {}
+
+    setMessages((prev) => [...prev, newUser, cachedAssistant]);
+
+    // ⭐ NEW
+    setShowSurvey(true);
+    return;
+  }
+
+  // Live fetch
+  setIsLoading(true);
+
+  const tempAssistant: Message = {
+    id: crypto.randomUUID(),
+    role: 'assistant',
+    content: 'Generating answer…',
+  };
+
+  setMessages((prev) => [...prev, newUser, tempAssistant]);
+
+  try {
+    const raw = await askGpt4Once(userText, entry.ai);
+    const resString = typeof raw === 'string' ? raw : JSON.stringify(raw);
+
+    setMessages((prev) =>
+      prev.map((m) =>
+        m.id === tempAssistant.id ? { ...m, content: resString } : m
+      )
+    );
+
+    setQaCache((p) => ({ ...p, [normalized]: resString }));
+
+    try {
+      const json = JSON.parse(resString);
+      if (json?.recommended_searches) {
+        setSavedSearches(json.recommended_searches);
+      }
+    } catch {}
+
+    // ⭐ NEW: as soon as answer appears, survey appears
+    setShowSurvey(true);
+  } catch {
+    toast.error('GPT-4 failed.');
+    setMessages((prev) => prev.filter((m) => m.id !== tempAssistant.id));
+  } finally {
+    setIsLoading(false);
+  }
+};
+
+
+  /* ---------------- Show Survey ---------------- */
+  const handleBackToHome = () => {
+    setShowSurvey(true);
+  };
+
+  /* ============================================================
      RENDER
-     ========================================================================= */
+  ============================================================ */
   return (
     <div className="w-full flex justify-center">
       <div className="max-w-6xl w-full rounded-lg border bg-background p-6 flex">
-        {/* LEFT SIDE */}
-        <div className="flex-1">
+
+        {/* LEFT SIDE: CHAT */}
+        <div className="flex-1 pr-6">
           <div className="flex justify-end mb-4">
             <Button
               variant={useFrozen ? 'secondary' : 'default'}
@@ -316,38 +291,11 @@ function ChatInner({ id, initialMessages }) {
             </Button>
           </div>
 
-          {showSurvey && (
-            <PostTrialSurvey
-              onDone={async (surveyData) => {
-                // Compute core DVs based on stored truth labels
-                trial.correctness =
-                  surveyData.finalAnswer === trial.correctAnswer;
-                trial.agreement =
-                  surveyData.finalAnswer === trial.aiAnswer;
-
-                await submitTrialToSheet(surveyData);
-
-                setShowSurvey(false);
-                setMessages([]);
-                setNodes([]);
-                setEdges([]);
-                setViewMode(previousMode);
-                trial.reset();
-              }}
-              onBack={() => {
-                setShowSurvey(false);
-                setViewMode(previousMode);
-              }}
-            />
-          )}
-
-          {!showSurvey && messages.length > 0 && (
+          {messages.length > 0 && (
             <>
-              <div className="flex justify-start mb-3">
-                <Button variant="ghost" onClick={handleBackToHome}>
-                  ← Back to Home
-                </Button>
-              </div>
+              <Button variant="ghost" onClick={handleBackToHome}>
+                Next →
+              </Button>
 
               <div className="pt-4 md:pt-10 flex justify-center fade-in">
                 <div className="max-w-2xl w-full text-center">
@@ -365,7 +313,7 @@ function ChatInner({ id, initialMessages }) {
             </>
           )}
 
-          {!showSurvey && messages.length === 0 && (
+          {messages.length === 0 && (
             <EmptyScreen
               setInput={() => {}}
               id={id}
@@ -376,14 +324,41 @@ function ChatInner({ id, initialMessages }) {
           )}
         </div>
 
-        {/* RIGHT SIDE */}
-        {messages.length > 0 && !showSurvey && (
-          <WebSearchPanel
-            recommended={savedSearches}
-            viewMode={viewMode}
-            onSearchClick={() => trial.recordSearchClick()}
-          />
-        )}
+        {/* RIGHT SIDE PANELS */}
+        <div className="flex flex-col gap-6 self-start w-[340px] overflow-hidden" style={{ width: "340px" }}>
+
+          {/* Web Search Always Visible */}
+          {messages.length > 0 && (
+            <WebSearchPanel
+              recommended={savedSearches}
+              viewMode={viewMode}
+              onSearchClick={() => trial.recordSearchClick()}
+            />
+          )}
+
+          {/* SURVEY SIDEBAR */}
+          {showSurvey && (
+            <PostTrialSurvey
+              onDone={async (surveyData) => {
+                trial.correctness =
+                  surveyData.finalAnswer === trial.correctAnswer;
+                trial.agreement =
+                  surveyData.finalAnswer === trial.aiAnswer;
+
+                await submitTrialToSheet(surveyData);
+
+                // FULL RESET like before
+                setShowSurvey(false);
+                setMessages([]);
+                setNodes([]);
+                setEdges([]);
+                trial.reset();
+              }}
+              onBack={() => setShowSurvey(false)}
+            />
+          )}
+        </div>
+
       </div>
     </div>
   );

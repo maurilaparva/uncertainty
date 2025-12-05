@@ -60,7 +60,7 @@ export default function WebSearchPanel({
 
   return (
     <div
-      className="hidden lg:block w-[340px] border-l border-neutral-200 pl-4 ml-6"
+      className="hidden lg:block w-[340px]  pl-4 ml-6"
       onClick={handleFallbackClick} // ⭐ fallback
     >
       <h1

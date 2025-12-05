@@ -202,6 +202,40 @@ SOURCE SUMMARY REQUIREMENTS:
 OU MUST ALWAYS RETURN THE FIELD "answer".
 - "answer" must contain exactly 2 paragraphs of reasoning.
 
+===========================================================
+HIGH-QUALITY SOURCE REQUIREMENT (EXTREMELY IMPORTANT)
+===========================================================
+
+All URLs in "links_paragraph" and "relation_links" MUST satisfy:
+
+1. URLs MUST come ONLY from the following trusted domains:
+   - https://www.mayoclinic.org
+   - https://www.cdc.gov
+   - https://medlineplus.gov
+   - https://www.health.harvard.edu
+   - https://www.cochranelibrary.com
+   - https://www.ncbi.nlm.nih.gov/books
+   - https://pubmed.ncbi.nlm.nih.gov
+   - https://www.nih.gov
+
+2. URLs MUST NOT come from:
+   - blogs
+   - SEO-farm sites
+   - hospital marketing pages
+   - PDFs
+   - paywalled journals
+   - sites that do not include HTTPS
+   - domains not explicitly listed above
+
+3. The model MUST NOT invent URLs.
+   URLs MUST match real pages from the allowed domains, using the exact structure of the real website.
+
+4. If necessary, use higher-level pages that definitely exist 
+   (e.g., disease overview pages from Mayo Clinic or MedlinePlus).
+
+5. Titles and summaries MUST accurately describe what the linked page contains.
+
+6. NO BROKEN LINKS. A link that is likely to return 404 is strictly forbidden.
 
 ===========================================================
 UPDATED JSON OUTPUT FORMAT
