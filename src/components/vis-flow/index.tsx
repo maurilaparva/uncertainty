@@ -131,54 +131,51 @@ function RelationNode({ data }: any) {
             {label}
           </div>
 
-          {/* Sources for this relation */}
+          {/* Explanation with citations */}
           {explanation && (
             <div style={{ marginTop: 10, fontSize: 16, lineHeight: "1.45", color: "black" }}>
               {(() => {
-                const text = explanation;
-                const parts: any[] = [];
-                const citationRegex = /\[(\d+)\]/g;
+                const text = explanation
+                const parts: any[] = []
+                const citationRegex = /\[(\d+)\]/g
 
-                let lastIndex = 0;
-                let match;
+                let lastIndex = 0
+                let match
 
                 while ((match = citationRegex.exec(text)) !== null) {
-                  const citeStart = match.index;
-                  const citeEnd = citationRegex.lastIndex;
+                  const citeStart = match.index
+                  const citeEnd = citationRegex.lastIndex
 
-                  // push text before citation
                   if (citeStart > lastIndex) {
                     parts.push({
                       type: "text",
                       value: text.slice(lastIndex, citeStart),
-                    });
+                    })
                   }
 
-                  // push citation
                   parts.push({
                     type: "cite",
                     number: parseInt(match[1], 10),
-                  });
+                  })
 
-                  lastIndex = citeEnd;
+                  lastIndex = citeEnd
                 }
 
-                // push remaining text
                 if (lastIndex < text.length) {
                   parts.push({
                     type: "text",
                     value: text.slice(lastIndex),
-                  });
+                  })
                 }
 
                 return parts.map((part, idx) => {
                   if (part.type === "text") {
-                    return <span key={idx}>{part.value}</span>;
+                    return <span key={idx}>{part.value}</span>
                   }
 
                   if (part.type === "cite") {
-                    const src = data.relation_links?.[part.number - 1];
-                    if (!src) return <span key={idx}>[{part.number}]</span>;
+                    const src = data.relation_links?.[part.number - 1]
+                    if (!src) return <span key={idx}>[{part.number}]</span>
 
                     return (
                       <a
@@ -194,16 +191,14 @@ function RelationNode({ data }: any) {
                       >
                         [{part.number}]
                       </a>
-                    );
+                    )
                   }
 
-                  return null;
-                });
+                  return null
+                })
               })()}
             </div>
           )}
-
-
 
           {/* Uncertainty bar */}
           <div className="w-full h-2 bg-neutral-200 rounded-full overflow-hidden shadow-inner mt-4">
@@ -290,7 +285,7 @@ export default function FlowComponent({
       position: { x: 480, y: 0 }
     })
 
-    // SUPPORT NODES → right-out → bottom of claim
+    // SUPPORT NODES
     supports.forEach((rel, i) => {
       const id = `support-${i}`
 
@@ -305,7 +300,6 @@ export default function FlowComponent({
           bgColor: green,
           nodeRole: 'support'
         },
-
         position: { x: 200, y: 250 + i * 450 }
       })
 
@@ -335,7 +329,7 @@ export default function FlowComponent({
       })
     })
 
-    // ATTACK NODES → left-out → bottom of claim
+    // ATTACK NODES
     attacks.forEach((rel, i) => {
       const id = `attack-${i}`
 

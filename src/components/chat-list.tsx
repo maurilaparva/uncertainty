@@ -589,6 +589,11 @@ function AssistantMessage({
           centralClaim={gptData.central_claim}
           relations={gptData.relations}
           overallConfidence={gptData.overall_uncertainty}
+          hideTimeout={hideTimeout}
+          setPreviewUrl={setPreviewUrl}
+          setPreviewPos={setPreviewPos}
+          trial={trial}
+
         />
 
         {/* === RELATION LEGEND (NEW) === */}

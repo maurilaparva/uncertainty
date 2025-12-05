@@ -113,6 +113,30 @@ EXPLANATION RULES (CRITICAL):
 - Explanations MUST match the type field exactly.
 
 ===========================================================
+CITATION REQUIREMENTS FOR SUB-ARGUMENT "source" FIELD (NEW)
+===========================================================
+
+- The "source" text of every SUPPORTS and ATTACKS relation MUST contain at least one inline numeric citation (e.g., [1]).
+- ZERO relations may omit citations.
+
+- These numeric citations MUST correspond exactly to entries in "links_paragraph".
+  (The 1st source = [1], 2nd = [2], etc.)
+
+Each relation's "source" text MUST cite at least one valid number, and this citation MUST appear directly in the 'source' field, not in the explanation.
+
+- Citations MUST appear naturally at the end of the sentence, formatted exactly as:
+      “… because airway inflammation decreases [1].”
+      “… which undermines the claim [2].”
+
+- Citations MUST NOT be invented.
+- Citations MUST NOT appear in the central_claim.
+- Citations MUST NOT appear in the explanation text under any circumstances.
+- If a relation's "source" text does not contain a numeric citation, the output is invalid.
+
+
+
+
+===========================================================
 RELATION EXPLANATION FAIRNESS REQUIREMENT 
 ===========================================================
 
@@ -155,7 +179,7 @@ RULES:
 - Citations MUST be used at least once per source.
 - Citations MUST NOT be invented; they MUST correspond to 
   real entries in "links_paragraph".
-- Citations MUST NOT appear in the "central_claim" or the sub-argument text, but may appear in explanations for sub-argument text.
+- Citations MUST NOT appear in the "central_claim" or "explanation", but MAY appear in the sub-argument text. 
 - Citations MUST appear inline exactly as: [1], [2], [3].
 
 "links_paragraph" MUST contain at least as many entries as
@@ -163,13 +187,9 @@ the number of citations used.
 
 RELATION EXPLANATION CITATIONS (UPDATED):
 
-- Relation explanations MAY include inline numeric citations like [1], [2], etc.
-- Include inline citations in at least one supporting and one attacking argument explanation.
-- These citations MUST correspond to entries in "links_paragraph".
-- They MUST use the same numbering as the citations inside the 2-paragraph answer.
-- Explanations MUST include at least one inline citation.
-- Citations MUST appear naturally within the sentence or at the end of the explanation.
-- Relation explanations MUST NOT invent citations that do not exist in "links_paragraph".
+- Relation explanations MUST NOT contain any numeric citations.
+- Citations MUST appear exclusively inside the "source" field of each relation.
+- Explanations must remain purely verbal reasoning and may not reference numbered sources.
 
 SOURCE SUMMARY REQUIREMENTS:
 -The summary MUST BE 1-2 short sentences.
@@ -211,12 +231,7 @@ UPDATED JSON OUTPUT FORMAT
     "title": "...",
     "summary": "<1–2 sentence description of what this source contains>"
   }
-  ],
-  "recommended_searches": {
-    "paragraph_level": [],
-    "token_level": [],
-    "relation_level": []
-  }
+  ]
 }
 
 ===========================================================
