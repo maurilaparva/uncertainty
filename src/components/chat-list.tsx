@@ -361,7 +361,7 @@ function RenderToken({
       {hoverInfo &&
   createPortal(
     <div
-      className="fixed z-50 bg-white border border-neutral-300 shadow-lg rounded-md px-2 py-1 text-[11px]"
+      className="fixed z-50 pointer-events-none bg-white border border-neutral-300 shadow-lg rounded-md px-2 py-1 text-[11px]"
       style={{
         top: hoverInfo.y,
         left: hoverInfo.x,
@@ -701,7 +701,7 @@ export function ChatList({
       {previewUrl &&
   createPortal(
     <div
-      className="fixed z-50 bg-white border shadow-lg rounded-lg p-3 text-sm max-w-xs overflow-visible"
+      className="fixed z-50 pointer-events-none bg-white border shadow-lg rounded-lg p-3 text-sm max-w-xs overflow-visible"
       style={{
         top: previewPos.y,
         left: previewPos.x,
