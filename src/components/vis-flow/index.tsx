@@ -62,7 +62,6 @@ function RelationNode({ data }: any) {
 
   return (
     <div style={{ position: 'relative' }}>
-
       {/* Central claim handles */}
       <Handle
         id="left-target"
@@ -70,14 +69,12 @@ function RelationNode({ data }: any) {
         position={Position.Left}
         style={{ opacity: isCentral ? 1 : 0, width: 10, height: 10, background: 'black', borderRadius: 5 }}
       />
-
       <Handle
         id="right-target"
         type="target"
         position={Position.Right}
         style={{ opacity: isCentral ? 1 : 0, width: 10, height: 10, background: 'black', borderRadius: 5 }}
       />
-
       <Handle
         id="bottom"
         type="target"
@@ -85,7 +82,7 @@ function RelationNode({ data }: any) {
         style={{ opacity: isCentral ? 1 : 0, width: 10, height: 10, background: 'black', borderRadius: 5 }}
       />
 
-      {/* Support → arrow from RIGHT */}
+      {/* Support handle */}
       <Handle
         id="right-out"
         type="source"
@@ -93,7 +90,7 @@ function RelationNode({ data }: any) {
         style={{ opacity: isSupport ? 1 : 0, width: 10, height: 10, background: 'black', borderRadius: 5 }}
       />
 
-      {/* Attack → arrow from LEFT */}
+      {/* Attack handle */}
       <Handle
         id="left-out"
         type="source"
@@ -126,12 +123,81 @@ function RelationNode({ data }: any) {
             whiteSpace: 'pre-line'
           }}
         >
-          {/* Larger label */}
+          {/* LABEL WITH CITATIONS */}
           <div style={{ fontSize: 18, fontWeight: 600 }}>
-            {label}
+            {(() => {
+              const text = label
+              const parts: any[] = []
+              const citationRegex = /\[(\d+)\]/g
+
+              let lastIndex = 0
+              let match
+
+              while ((match = citationRegex.exec(text)) !== null) {
+                const citeStart = match.index
+                const citeEnd = citationRegex.lastIndex
+
+                if (citeStart > lastIndex) {
+                  parts.push({
+                    type: "text",
+                    value: text.slice(lastIndex, citeStart),
+                  })
+                }
+
+                parts.push({
+                  type: "cite",
+                  number: parseInt(match[1], 10),
+                })
+
+                lastIndex = citeEnd
+              }
+
+              if (lastIndex < text.length) {
+                parts.push({
+                  type: "text",
+                  value: text.slice(lastIndex),
+                })
+              }
+
+              return parts.map((part, idx) => {
+                if (part.type === "text") {
+                  return <span key={idx}>{part.value}</span>
+                }
+
+                if (part.type === "cite") {
+                  // ALWAYS USE relation_links[0]
+                  const src = data.relation_links?.[0]
+                  if (!src) return <span key={idx}>[{part.number}]</span>
+
+                  return (
+                    <a
+                      key={idx}
+                      href={src.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        color: "#2563eb",
+                        textDecoration: "underline",
+                        cursor: "pointer",
+                        userSelect: "text",
+                        pointerEvents: "auto",
+                        position: "relative",
+                        zIndex: 9999
+                      }}
+                      onMouseDown={(e) => e.stopPropagation()}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      [{part.number}]
+                    </a>
+                  )
+                }
+
+                return null
+              })
+            })()}
           </div>
 
-          {/* Explanation with citations */}
+          {/* EXPLANATION WITH CITATIONS */}
           {explanation && (
             <div style={{ marginTop: 10, fontSize: 16, lineHeight: "1.45", color: "black" }}>
               {(() => {
@@ -174,7 +240,8 @@ function RelationNode({ data }: any) {
                   }
 
                   if (part.type === "cite") {
-                    const src = data.relation_links?.[part.number - 1]
+                    // ALWAYS USE relation_links[0]
+                    const src = data.relation_links?.[0]
                     if (!src) return <span key={idx}>[{part.number}]</span>
 
                     return (
@@ -186,8 +253,14 @@ function RelationNode({ data }: any) {
                         style={{
                           color: "#2563eb",
                           textDecoration: "underline",
-                          cursor: "pointer"
+                          cursor: "pointer",
+                          userSelect: "text",
+                          pointerEvents: "auto",
+                          position: "relative",
+                          zIndex: 9999
                         }}
+                        onMouseDown={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
                       >
                         [{part.number}]
                       </a>
@@ -212,7 +285,6 @@ function RelationNode({ data }: any) {
             />
           </div>
 
-          {/* Larger uncertainty text */}
           <p
             style={{
               marginTop: 6,
@@ -285,7 +357,7 @@ export default function FlowComponent({
       position: { x: 480, y: 0 }
     })
 
-    // SUPPORT NODES
+    // SUPPORTS
     supports.forEach((rel, i) => {
       const id = `support-${i}`
 
@@ -329,7 +401,7 @@ export default function FlowComponent({
       })
     })
 
-    // ATTACK NODES
+    // ATTACKS
     attacks.forEach((rel, i) => {
       const id = `attack-${i}`
 
