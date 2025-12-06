@@ -751,7 +751,7 @@ export const FROZEN_RESPONSES: Record<string, any> = {
   ]
 },
 
-  "is spironolactone an fda-approved drug for treating acne": {
+  "is spironolactone an fdaapproved drug for treating acne": {
   "answer": "Spironolactone is an FDA-approved drug for treating acne, as it effectively reduces androgen levels that contribute to acne development. Its anti-androgenic properties help decrease sebum production, which is a primary factor in acne formation, making it a recognized treatment option for hormonal acne in particular [1]. This approval reflects its established role in dermatology for managing acne, especially in adult women where hormonal influences are significant.\n\nClinical evidence supports spironolactone's efficacy and safety profile in acne treatment, which has led to its formal approval by regulatory authorities. The drug's ability to target the hormonal pathways involved in acne pathogenesis distinguishes it from other treatments, providing a valuable alternative for patients who do not respond well to conventional therapies [2]. This regulatory endorsement confirms its therapeutic value and widespread acceptance in acne management protocols.",
   "overall_uncertainty": 0.52,
   "token_uncertainty": [
