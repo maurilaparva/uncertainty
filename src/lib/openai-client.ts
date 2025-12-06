@@ -3,15 +3,20 @@ import OpenAI from 'openai';
 
 const apiKey = import.meta.env.VITE_OPENAI_API_KEY;
 
+/* =====================================================================
+   SAFE MODE: If no API key is present (like on GitHub Pages), we DO NOT
+   construct the OpenAI client. This prevents the browser from crashing.
+===================================================================== */
+let openai: OpenAI | null = null;
+
 if (!apiKey) {
-  console.warn('⚠️ VITE_OPENAI_API_KEY is not set. GPT-4 calls will fail.');
+  console.warn("⚠️ Live GPT mode disabled: no VITE_OPENAI_API_KEY found.");
+} else {
+  openai = new OpenAI({
+    apiKey,
+    dangerouslyAllowBrowser: true,
+  });
 }
-
-export const openai = new OpenAI({
-  apiKey,
-  dangerouslyAllowBrowser: true,
-});
-
 // -------------------------------------------------------
 // ASK GPT WITH FORCED AI ANSWER LABEL
 // -------------------------------------------------------
@@ -20,8 +25,8 @@ export async function askGpt4Once(
   aiLabel: "yes" | "no",
   uncertaintyLevel: "low" | "medium" | "high"
 ): Promise<string> {
-  if (!apiKey) {
-    throw new Error('Missing VITE_OPENAI_API_KEY');
+   if (!apiKey || !openai) {
+    throw new Error("Live GPT mode is disabled because no API key is set.");
   }
 
   // ============================================================

@@ -100,6 +100,8 @@ function ChatInner({ id, initialMessages }) {
   const hasOpenAiKey = !!import.meta.env.VITE_OPENAI_API_KEY;
   const trial = useTrial();
   const [questionNumber, setQuestionNumber] = useState(0);
+  const ENABLE_LIVE_MODE = false;
+  
 
   const [useFrozen, setUseFrozen] = useState(true);
   const [viewMode, setViewMode] = useAtom(viewModeAtom);
@@ -211,8 +213,12 @@ function ChatInner({ id, initialMessages }) {
   }
 
   /* LIVE MODE */
-  if (!hasOpenAiKey) {
-    toast.error('Missing OpenAI key.');
+  // if (!hasOpenAiKey) {
+  //   toast.error('Missing OpenAI key.');
+  //   return;
+  // }
+  if (!ENABLE_LIVE_MODE) {
+    toast.error('Live Mode is disabled in this deployment.');
     return;
   }
 
@@ -302,10 +308,10 @@ function ChatInner({ id, initialMessages }) {
         <div className="flex-1 pr-6">
           <div className="flex justify-end mb-4">
             <Button
-              variant={useFrozen ? 'secondary' : 'default'}
-              onClick={() => setUseFrozen(!useFrozen)}
+              variant={'secondary'}
+              disabled={true}
             >
-              {useFrozen ? 'Demo Mode' : 'Live Mode'}
+              Demo Mode
             </Button>
           </div>
 
@@ -337,7 +343,7 @@ function ChatInner({ id, initialMessages }) {
               id={id}
               append={append}
               initialOpen={!previewToken || !serperToken}
-              isModelLoaded={hasOpenAiKey}
+              isModelLoaded={true}
             />
           )}
         </div>
