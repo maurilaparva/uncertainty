@@ -12,7 +12,7 @@ const id = nanoid();
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter basename='/prototype'>
+    <BrowserRouter basename='/uncertainty'>
       <Chat id={id} />
     </BrowserRouter>
   </React.StrictMode>

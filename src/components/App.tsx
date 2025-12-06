@@ -99,7 +99,7 @@ export function Chat(props) {
 function ChatInner({ id, initialMessages }) {
   const hasOpenAiKey = !!import.meta.env.VITE_OPENAI_API_KEY;
   const trial = useTrial();
-  const [questionNumber, setQuestionNumber] = useState(1);
+  const [questionNumber, setQuestionNumber] = useState(0);
 
   const [useFrozen, setUseFrozen] = useState(true);
   const [viewMode, setViewMode] = useAtom(viewModeAtom);
