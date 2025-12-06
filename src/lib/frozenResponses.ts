@@ -982,7 +982,7 @@ export const FROZEN_RESPONSES: Record<string, any> = {
   ]
 },
 
-  "are both simvastatin and ambien drugs that are recommended to be taken at night": {
+  "are both simvastatin and ambien drugs recommended to be taken at night": {
   "answer": "Both Simvastatin and Ambien are recommended to be taken at night due to their pharmacological profiles and intended effects. Simvastatin, a lipid-lowering agent, is most effective when taken at night because cholesterol synthesis in the liver peaks during this time, enhancing the drug's ability to reduce LDL cholesterol levels. Ambien, a sedative-hypnotic used for insomnia, is naturally advised for nighttime use to align with the sleep cycle and promote effective sleep onset and maintenance [1]. This timing optimizes the therapeutic benefits of both medications by synchronizing with the body's biological rhythms.\n\nTaking Simvastatin and Ambien at night also minimizes potential side effects and maximizes patient compliance. Nighttime administration of Simvastatin reduces the risk of muscle-related side effects by allowing the body to metabolize the drug during rest periods, while Ambien's sedative effects are best utilized when the patient is preparing for sleep, reducing daytime drowsiness and cognitive impairment. Clinical guidelines and pharmacokinetic studies support this dual recommendation, confirming that nighttime dosing is the optimal strategy for both drugs [2].",
   "overall_uncertainty": 0.22,
   "token_uncertainty": [
