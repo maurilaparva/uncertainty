@@ -131,7 +131,9 @@ function ChatInner({ id, initialMessages }) {
       participantId: trial.participantId,
       interfaceMode: trial.interfaceMode,
       questionId: trial.questionId,
-
+      Ordering: questionNumber,            // 1,2,3,4…
+      GroundTruth: trial.correctAnswer,    // “yes” or “no”
+      AI_Answer: trial.aiAnswer,           // “yes” or “no”
       finalAnswer: surveyData.finalAnswer,
       ConfidenceAI: surveyData.aiConfidence,
       ConfidenceAnswer: surveyData.selfConfidence,
@@ -145,6 +147,7 @@ function ChatInner({ id, initialMessages }) {
 
       Time: trial.computeResponseTime() / 1000,
       LinkClick: Number(trial.linkClickCount ?? 0),
+      SearchClick: trial.searchClickCount,
 
       RawData: { surveyData, trialState: trial }
     };

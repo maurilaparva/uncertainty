@@ -14,13 +14,13 @@ interface TrialContextType {
   questionId: string;
   setQuestionId: (id: string) => void;
 
-  // Fixed: persist for entire question lifecycle
+  // Persisted per question
   aiAnswer: "yes" | "no" | null;
   correctAnswer: "yes" | "no" | null;
   setAiAnswer: (x: "yes" | "no") => void;
   setCorrectAnswer: (x: "yes" | "no") => void;
 
-  // trial state
+  // trial state (from useTrialState)
   finalAnswer: "yes" | "no" | null;
   correctness: boolean | null;
   agreement: boolean | null;
@@ -45,6 +45,7 @@ interface TrialContextType {
   setConfidenceAI: (x: any) => void;
   setConfidenceSelf: (x: any) => void;
 
+  // ⭐ NEWLY ENSURED (search tracking)
   recordSearchClick: () => void;
 
   computeResponseTime: () => number;
@@ -58,7 +59,7 @@ interface TrialContextType {
 const TrialContext = createContext<TrialContextType | null>(null);
 
 // ==================================================================
-// Provider – FIXED
+// Provider
 // ==================================================================
 export function TrialProvider({ children }) {
   const [participantId] = useLocalStorage(
@@ -70,17 +71,34 @@ export function TrialProvider({ children }) {
 
   const [questionId, setQuestionId] = useState("");
 
-  // THESE MUST PERSIST, NOT BE RECREATED BY useTrialState()
+  // Persisted per-question values
   const [aiAnswer, setAiAnswer] = useState<"yes" | "no" | null>(null);
   const [correctAnswer, setCorrectAnswer] = useState<"yes" | "no" | null>(null);
 
-  // IMPORTANT FIX — do *not* key by questionId
+  // ⭐ NEW — persistent counter for search clicks
+  const [searchClickCount, setSearchClickCount] = useState(0);
+
+  // Base state (timing, correctness, link clicks, etc.)
   const trialState = useTrialState();
 
-  // Fixed reset: ONLY clears participant actions
+  // ⭐ NEW — unified search logger
+  function recordSearchClick() {
+    setSearchClickCount((x) => x + 1);
+
+    // Mark searchUsed + first timestamp
+    if (!trialState.searchUsed) {
+      trialState.setSearchUsed(true);
+      trialState.setSearchFirstTime(Date.now());
+    }
+  }
+
+  // Reset participant-trial actions between questions
   const reset = () => {
     trialState.reset();
-    // DO NOT clear aiAnswer or correctAnswer here
+
+    // We DO NOT reset aiAnswer or correctAnswer here
+    // but we SHOULD reset search count per question:
+    setSearchClickCount(0);
   };
 
   const value: TrialContextType = {
@@ -96,7 +114,13 @@ export function TrialProvider({ children }) {
     setAiAnswer,
     setCorrectAnswer,
 
+    // useTrialState values (spread)
     ...trialState,
+
+    // ⭐ ensure search tracking functions & values are exported
+    recordSearchClick,
+    searchClickCount,
+
     reset,
   };
 
