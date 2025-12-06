@@ -99,6 +99,7 @@ export function Chat(props) {
 function ChatInner({ id, initialMessages }) {
   const hasOpenAiKey = !!import.meta.env.VITE_OPENAI_API_KEY;
   const trial = useTrial();
+  const [questionNumber, setQuestionNumber] = useState(1);
 
   const [useFrozen, setUseFrozen] = useState(true);
   const [viewMode, setViewMode] = useAtom(viewModeAtom);
@@ -165,6 +166,7 @@ function ChatInner({ id, initialMessages }) {
 
   const normalized = normalizeQuestion(userText);
   trial.setQuestionId(QUESTION_IDS[normalized]);
+  setQuestionNumber((n) => n + 1);
 
   const entry = TRUE_TABLE[normalized];
   if (!entry) {
@@ -371,6 +373,7 @@ function ChatInner({ id, initialMessages }) {
                 trial.reset();
               }}
               onBack={() => setShowSurvey(false)}
+              questionNumber={questionNumber}
             />
           )}
         </div>

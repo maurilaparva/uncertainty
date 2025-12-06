@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from './ui/button';
 
-export default function PostTrialSurvey({ onDone, onBack }) {
+export default function PostTrialSurvey({ onDone, onBack, questionNumber }) {
   const [finalAnswer, setFinalAnswer] = useState('');
   const [aiConfidence, setAiConfidence] = useState(3);
   const [selfConfidence, setSelfConfidence] = useState(3);
@@ -103,7 +103,7 @@ export default function PostTrialSurvey({ onDone, onBack }) {
             letterSpacing: '-0.01em'
           }}
         >
-          Post-Question Survey
+          Question {questionNumber}
         </h1>
 
         {onBack && (
