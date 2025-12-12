@@ -22,6 +22,8 @@ import { CustomGraphNode, CustomGraphEdge } from '../lib/types.ts';
 import { FROZEN_RESPONSES } from '../lib/frozenResponses.ts';
 import { TrialProvider, useTrial } from '../lib/useTrial.tsx';
 
+const DISABLE_DATA_PIPELINE = true;
+
 /* --------------------- Normalization --------------------- */
 const normalizeQuestion = (q: string) =>
   q
@@ -124,6 +126,13 @@ function ChatInner({ id, initialMessages }) {
 
   /* ---------------- Submit trial to Google Sheets ---------------- */
   async function submitTrialToSheet(surveyData) {
+    if (DISABLE_DATA_PIPELINE) {
+      console.log('[DEMO MODE] Trial data NOT submitted', {
+        surveyData,
+        trialState: trial,
+      });
+      return;
+    }
     const WEB_APP_URL =
       'https://script.google.com/macros/s/AKfycbw3x92gcd2Fov1j57tF-grx-bBnxpCuI_OI6y4j5MbCppRhw_RKTqf68_y9CN8VaBWz/exec';
 
