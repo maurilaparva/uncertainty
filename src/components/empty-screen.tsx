@@ -45,6 +45,10 @@ const exampleMessages = [
   {
     heading: 'Can an adult who has not had chickenpox get shingles?',
     message: 'Can an adult who has not had chickenpox get shingles?'
+  },
+  {
+    heading: 'Does regular exercise improve cardiovascular health?',
+    message: 'Does regular exercise improve cardiovascular health?'
   }
 ];
 

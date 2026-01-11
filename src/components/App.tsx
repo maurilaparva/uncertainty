@@ -22,7 +22,7 @@ import { CustomGraphNode, CustomGraphEdge } from '../lib/types.ts';
 import { FROZEN_RESPONSES } from '../lib/frozenResponses.ts';
 import { TrialProvider, useTrial } from '../lib/useTrial.tsx';
 
-const DISABLE_DATA_PIPELINE = true;
+const DISABLE_DATA_PIPELINE = false;
 
 /* --------------------- Normalization --------------------- */
 const normalizeQuestion = (q: string) =>
@@ -68,17 +68,22 @@ const TRUE_TABLE: Record<
   'can an adult who has not had chickenpox get shingles': {
     gt: 'no',
     ai: 'no',
-  }
+  },
+  'does regular exercise improve cardiovascular health': {
+  gt: 'yes',
+  ai: 'yes',
+}
 };
 const UNCERTAINTY_TARGETS: Record<string, "low" | "medium" | "high"> = {
-  'did dupilumab receive fda approval for asthma before chronic rhinosinusitis': 'medium',
+  'did dupilumab receive fda approval for asthma before chronic rhinosinusitis': 'high',
   'is there more antihistamine in benadryl than rhinocort': 'high',
-  'is deep vein thrombosis a common side effect of ocella': 'low',
+  'is deep vein thrombosis a common side effect of ocella': 'medium',
   'is spironolactone an fdaapproved drug for treating acne': 'medium',
-  'are both simvastatin and ambien drugs recommended to be taken at night': 'low',
+  'are both simvastatin and ambien drugs recommended to be taken at night': 'medium',
   'is uveitis a common symptom of ankylosing spondylitis': 'medium',
-  'is fever a common symptom of jock itch': 'high',
-  'can an adult who has not had chickenpox get shingles': 'medium'
+  'is fever a common symptom of jock itch': 'low',
+  'can an adult who has not had chickenpox get shingles': 'low',
+  'does regular exercise improve cardiovascular health': 'medium'
 };
 
 const QUESTION_IDS = Object.keys(TRUE_TABLE).reduce((acc, key, i) => {
