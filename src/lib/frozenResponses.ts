@@ -183,63 +183,64 @@ export const FROZEN_RESPONSES: Record<string, any> = {
   ],
   "central_claim": "Dupilumab did not receive FDA approval for asthma before chronic rhinosinusitis.",
   "relations": [
-    {
-      "source": "The approval for chronic rhinosinusitis was prioritized due to the pressing need for effective treatments, which suggests that the regulatory pathway was influenced by the urgency of health concerns [1].",
-      "type": "SUPPORTS",
-      "target": "central_claim",
-      "score": 0.8,
-      "explanation": "This supports the claim because it highlights the prioritization of chronic rhinosinusitis over asthma in the approval process.",
-      "relation_links": [
-        {
-          "url": "https://www.mayoclinic.org/drugs-supplements/dupilumab-subcutaneous-route/description/drg-20406153",
-          "title": "Mayo Clinic",
-          "summary": "Mayo Clinic provides comprehensive information on various medical conditions, including treatment options and drug approvals."
-        }
-      ]
-    },
-    {
-      "source": "The sequence of approvals reflects a strategic approach by manufacturers to address the most urgent health concerns first, which suggests a deliberate prioritization in the approval process [2].",
-      "type": "SUPPORTS",
-      "target": "central_claim",
-      "score": 0.7,
-      "explanation": "This supports the claim because it indicates that the approval for chronic rhinosinusitis was a strategic decision based on urgency.",
-      "relation_links": [
-        {
-          "url": "https://investor.regeneron.com/news-releases/news-release-details/dupixentr-dupilumab-approved-us-first-new-targeted-therapy-over",
-          "title": "Regeneron",
-          "summary": "The CDC offers insights into public health priorities and the impact of various treatments on health outcomes."
-        }
-      ]
-    },
-    {
-      "source": "The approval for asthma may have required additional data to support its use, which raises questions about the assumptions made regarding its urgency compared to chronic rhinosinusitis.",
-      "type": "ATTACKS",
-      "target": "central_claim",
-      "score": 0.6,
-      "explanation": "This attacks the claim because it introduces doubt about the necessity and urgency of the asthma approval compared to chronic rhinosinusitis.",
-      "relation_links": [
-        {
-          "url": "https://medlineplus.gov/druginfo/meds/a617021.html",
-          "title": "MedlinePlus",
-          "summary": "MedlinePlus provides reliable information on health conditions, medications, and the approval processes for various treatments."
-        }
-      ]
-    },
-    {
-      "source": "The complexities involved in drug approvals can lead to varying interpretations of the urgency of treatment needs, which may challenge the straightforward narrative of approval sequences.",
-      "type": "ATTACKS",
-      "target": "central_claim",
-      "score": 0.5,
-      "explanation": "This attacks the claim because it suggests that the approval process is not always linear and can be influenced by multiple factors.",
-      "relation_links": [
-        {
-          "url": "https://www.health.harvard.edu/blog/harvard-health-ad-watch-a-new-injection-treatment-for-eczema-202209272824",
-          "title": "Harvard Health",
-          "summary": "Harvard Health discusses various health topics, including the complexities of drug approvals and their implications for treatment."
-        }
-      ]
-    }
-  ],
+  {
+    "source": "The regulatory pathway for chronic rhinosinusitis was prioritized, possibly due to the pressing need for effective treatments in that area, which was supported by clinical evidence demonstrating significant benefits for patients suffering from chronic rhinosinusitis [1].",
+    "type": "SUPPORTS",
+    "target": "central_claim",
+    "score": 0.8,
+    "explanation": "This supports the claim because it highlights the prioritization of chronic rhinosinusitis over asthma in the approval process.",
+    "relation_links": [
+      {
+        "url": "https://www.mayoclinic.org/drugs-supplements/dupilumab-subcutaneous-route/description/drg-20406153",
+        "title": "Mayo Clinic",
+        "summary": "Mayo Clinic provides comprehensive information on various medical conditions, including treatment options and drug approvals."
+      }
+    ]
+  },
+  {
+    "source": "The approval timeline reflects a strategic approach by the manufacturers to address the most urgent health concerns first, which can often influence the order of approvals [2].",
+    "type": "SUPPORTS",
+    "target": "central_claim",
+    "score": 0.82,
+    "explanation": "This supports the claim because it indicates that the approval for chronic rhinosinusitis was a strategic decision based on urgency.",
+    "relation_links": [
+      {
+        "url": "https://investor.regeneron.com/news-releases/news-release-details/dupixentr-dupilumab-approved-us-first-new-targeted-therapy-over",
+        "title": "Regeneron",
+        "summary": "The CDC offers insights into public health priorities and the impact of various treatments on health outcomes."
+      }
+    ]
+  },
+  {
+    "source": "This foundational approval likely set the stage for subsequent applications for other indications, such as asthma, which may have required additional data to support its use in that context [1].",
+    "type": "ATTACKS",
+    "target": "central_claim",
+    "score": 0.47,
+    "explanation": "This attacks the claim because it introduces doubt about the necessity and urgency of the asthma approval compared to chronic rhinosinusitis.",
+    "relation_links": [
+      {
+        "url": "https://medlineplus.gov/druginfo/meds/a617021.html",
+        "title": "MedlinePlus",
+        "summary": "MedlinePlus provides reliable information on health conditions, medications, and the approval processes for various treatments."
+      }
+    ]
+  },
+  {
+    "source": "The regulatory decisions made in this case illustrate the complexities involved in drug approvals, where the urgency of treatment needs can dictate the order in which approvals are granted [2].",
+    "type": "ATTACKS",
+    "target": "central_claim",
+    "score": 0.53,
+    "explanation": "This attacks the claim because it suggests that the approval process is not always linear and can be influenced by multiple factors.",
+    "relation_links": [
+      {
+        "url": "https://www.health.harvard.edu/blog/harvard-health-ad-watch-a-new-injection-treatment-for-eczema-202209272824",
+        "title": "Harvard Health",
+        "summary": "Harvard Health discusses various health topics, including the complexities of drug approvals and their implications for treatment."
+      }
+    ]
+  }
+],
+
   "links_paragraph": [
     {
       "url": "https://www.mayoclinic.org/drugs-supplements/dupilumab-subcutaneous-route/description/drg-20406153",
@@ -436,51 +437,52 @@ export const FROZEN_RESPONSES: Record<string, any> = {
 ,
   "central_claim": "Benadryl does not contain more antihistamine than Rhinocort",
   "relations": [
-    {
-      "source": "Rhinocort's formulation includes a more concentrated and targeted antihistamine component than Benadryl, which suggests it contains more antihistamine overall [1].",
-      "type": "SUPPORTS",
-      "target": "central_claim",
-      "score": 0.95,
-      "explanation": "This supports the claim because Rhinocort's antihistamine concentration is higher than Benadryl's.",
-      "relation_links": [
-        {
-          "url": "https://medlineplus.gov/allergy.html",
-          "title": "Pharmacological profiles of nasal corticosteroids and antihistamines",
-          "summary": "This source details the pharmacological differences between nasal corticosteroids like Rhinocort and oral antihistamines like Benadryl."
-        }
-      ]
-    },
-    {
-      "source": "Benadryl's systemic antihistamine agents act at lower concentrations compared to Rhinocort's localized and potent antihistamine effect, indicating less overall antihistamine content [2].",
-      "type": "SUPPORTS",
-      "target": "central_claim",
-      "score": 0.9,
-      "explanation": "This supports the claim because Benadryl's antihistamine concentration is lower than Rhinocort's.",
-      "relation_links": [
-        {
-          "url": "https://www.mayoclinic.org/diseases-conditions/allergies/in-depth/allergy-medications/art-20047403",
-          "title": "Comparative analysis of antihistamine delivery methods",
-          "summary": "This article compares the concentration and delivery of antihistamines in different drug formulations."
-        }
-      ]
-    },
-    {
-      "source": "However, the difference in drug classes and delivery routes complicates direct comparison of antihistamine content, which raises a concern that the claim might oversimplify the actual pharmacological effects.",
-      "type": "ATTACKS",
-      "target": "central_claim",
-      "score": 0.7,
-      "explanation": "This attacks the claim because it highlights the complexity in comparing antihistamine content across different drug types.",
-      "relation_links": []
-    },
-    {
-      "source": "An alternative perspective indicates that measuring total antihistamine content without considering pharmacodynamics and administration routes may misrepresent the actual antihistamine potency, which challenges the straightforward comparison.",
-      "type": "ATTACKS",
-      "target": "central_claim",
-      "score": 0.65,
-      "explanation": "This attacks the claim because it questions the validity of comparing antihistamine amounts without context.",
-      "relation_links": []
-    }
-  ],
+  {
+    "source": "Rhinocort’s specialized formulation allows it to deliver a higher effective dose of antihistamine activity despite Benadryl’s reputation as an antihistamine medication [1].",
+    "type": "SUPPORTS",
+    "target": "central_claim",
+    "score": 0.95,
+    "explanation": "This supports the claim because Rhinocort's antihistamine concentration is higher than Benadryl's.",
+    "relation_links": [
+      {
+        "url": "https://medlineplus.gov/allergy.html",
+        "title": "Pharmacological profiles of nasal corticosteroids and antihistamines",
+        "summary": "This source details the pharmacological differences between nasal corticosteroids like Rhinocort and oral antihistamines like Benadryl."
+      }
+    ]
+  },
+  {
+    "source": "Benadryl, an oral antihistamine, contains a different class of antihistamine agents that act systemically but at lower concentrations compared to Rhinocort’s localized and potent antihistamine effect [2].",
+    "type": "SUPPORTS",
+    "target": "central_claim",
+    "score": 0.9,
+    "explanation": "This supports the claim because Benadryl's antihistamine concentration is lower than Rhinocort's.",
+    "relation_links": [
+      {
+        "url": "https://www.mayoclinic.org/diseases-conditions/allergies/in-depth/allergy-medications/art-20047403",
+        "title": "Comparative analysis of antihistamine delivery methods",
+        "summary": "This article compares the concentration and delivery of antihistamines in different drug formulations."
+      }
+    ]
+  },
+  {
+    "source": "The difference in delivery methods and drug classes complicates direct comparisons of antihistamine content.",
+    "type": "ATTACKS",
+    "target": "central_claim",
+    "score": 0.7,
+    "explanation": "This attacks the claim because it highlights the complexity in comparing antihistamine content across different drug types.",
+    "relation_links": []
+  },
+  {
+    "source": "Simply measuring total antihistamine content without considering pharmacodynamics and administration routes may misrepresent the actual antihistamine potency [2].",
+    "type": "ATTACKS",
+    "target": "central_claim",
+    "score": 0.65,
+    "explanation": "This attacks the claim because it questions the validity of comparing antihistamine amounts without context.",
+    "relation_links": []
+  }
+],
+
   "links_paragraph": [
     {
       "url": "https://medlineplus.gov/antihistamines.html",
@@ -683,10 +685,10 @@ export const FROZEN_RESPONSES: Record<string, any> = {
   "central_claim": "Deep Vein Thrombosis is a common side effect of Ocella.",
   "relations": [
     {
-      "source": "Ocella's estrogen component increases blood coagulability, which promotes clot formation and thus raises the risk of DVT in users [1].",
+      "source": "The estrogen component in Ocella is known to elevate the risk of thrombotic events by altering the balance of clotting factors, making DVT a frequently observed adverse effect in patients using this medication [1].",
       "type": "SUPPORTS",
       "target": "central_claim",
-      "score": 0.63,
+      "score": 0.71,
       "explanation": "This supports the claim because increased coagulability directly leads to higher DVT risk.",
       "relation_links": [
         {
@@ -697,10 +699,10 @@ export const FROZEN_RESPONSES: Record<string, any> = {
       ]
     },
     {
-      "source": "Clinical data show that patients on Ocella have a higher incidence of DVT compared to non-users, indicating a direct association between the drug and thrombotic events [2].",
+      "source": "Clinical observations and pharmacological analyses have consistently demonstrated that Ocella’s formulation contributes to a prothrombotic state, thereby increasing the incidence of DVT among its users compared to non-users [2].",
       "type": "SUPPORTS",
       "target": "central_claim",
-      "score": 0.22,
+      "score": 0.67,
       "explanation": "This supports the claim because observed higher incidence confirms the commonality of DVT as a side effect.",
       "relation_links": [
         {
@@ -711,10 +713,10 @@ export const FROZEN_RESPONSES: Record<string, any> = {
       ]
     },
     {
-      "source": "However, some studies suggest that the overall risk of DVT with Ocella may be overstated due to confounding factors like patient lifestyle and genetics.",
+      "source": "This risk is particularly notable in women with additional predisposing factors such as obesity or prolonged immobility, which further compounds the likelihood of developing DVT while on Ocella therapy.",
       "type": "ATTACKS",
       "target": "central_claim",
-      "score": 0.72,
+      "score": 0.13,
       "explanation": "This attacks the claim because it raises a concern that other factors might explain the DVT risk rather than Ocella itself.",
       "relation_links": [
         {
@@ -725,11 +727,11 @@ export const FROZEN_RESPONSES: Record<string, any> = {
       ]
     },
     {
-      "source": "An alternative perspective indicates that newer formulations of Ocella have modified hormone levels that may reduce the incidence of DVT, challenging the notion that it is a common side effect.",
+      "source": "These findings underscore the importance of monitoring patients on Ocella for signs of DVT and considering risk factors before prescribing this medication [2].",
       "type": "ATTACKS",
       "target": "central_claim",
-      "score": 0.28,
-      "explanation": "This attacks the claim because it suggests that changes in the drug's formulation could lower DVT risk, contradicting the claim of commonality.",
+      "score": 0.09,
+      "explanation": "This attacks the claim because it suggests that individual risk assessment is necessary rather than assuming uniform DVT risk.",
       "relation_links": [
         {
           "url": "https://www.fda.gov/consumers/free-publications-women/birth-control",
@@ -739,6 +741,7 @@ export const FROZEN_RESPONSES: Record<string, any> = {
       ]
     }
   ],
+
   "links_paragraph": [
     {
       "url": "https://medlineplus.gov/bloodclots.html",
@@ -913,63 +916,64 @@ export const FROZEN_RESPONSES: Record<string, any> = {
   ],
   "central_claim": "Spironolactone is an FDA-approved drug for treating acne.",
   "relations": [
-    {
-      "source": "Spironolactone's anti-androgenic effects reduce sebum production, which directly addresses a key cause of acne, supporting its FDA approval for this use [1].",
-      "type": "SUPPORTS",
-      "target": "central_claim",
-      "score": 0.45,
-      "explanation": "This supports the claim because reducing sebum production is a primary mechanism for acne treatment.",
-      "relation_links": [
-        {
-          "url": "https://medlineplus.gov/druginfo/meds/a682627.html",
-          "title": "Spironolactone in dermatology: an update",
-          "summary": "This source discusses spironolactone's role in reducing androgen effects and sebum production, which are critical in acne pathogenesis."
-        }
-      ]
-    },
-    {
-      "source": "Clinical studies demonstrating spironolactone's safety and efficacy in acne treatment have led to its formal regulatory approval, confirming its status as an FDA-approved acne medication [2].",
-      "type": "SUPPORTS",
-      "target": "central_claim",
-      "score": 0.50,
-      "explanation": "This supports the claim because regulatory approval is based on demonstrated safety and efficacy.",
-      "relation_links": [
-        {
-          "url": "https://www.mayoclinic.org/diseases-conditions/acne/diagnosis-treatment/drc-20368048",
-          "title": "Spironolactone for acne",
-          "summary": "This source reviews clinical evidence supporting spironolactone's use in acne and its regulatory approval."
-        }
-      ]
-    },
-    {
-      "source": "However, some argue that spironolactone is primarily used off-label for acne, which raises a concern that its FDA approval status for acne treatment might be overstated.",
-      "type": "ATTACKS",
-      "target": "central_claim",
-      "score": 0.60,
-      "explanation": "This attacks the claim because it highlights uncertainty about the official approval status.",
-      "relation_links": [
-        {
-          "url": "https://www.ncbi.nlm.nih.gov/books/NBK554421/",
-          "title": "Off-label use of spironolactone in acne",
-          "summary": "This source discusses the common off-label use of spironolactone for acne, questioning its formal FDA approval for this indication."
-        }
-      ]
-    },
-    {
-      "source": "In contrast, the lack of a specific FDA-labeled indication for acne in some prescribing information suggests an alternative perspective indicating spironolactone may not be officially approved for acne treatment.",
-      "type": "ATTACKS",
-      "target": "central_claim",
-      "score": 0.55,
-      "explanation": "This attacks the claim because it points out discrepancies in labeling that challenge the approval assertion.",
-      "relation_links": [
-        {
-          "url": "https://www.drugs.com/spironolactone.html",
-          "title": "Spironolactone prescribing information",
-          "summary": "This source provides prescribing details that sometimes omit acne as an FDA-approved indication, suggesting ambiguity."
-        }
-      ]
-    }
-  ],
+  {
+    "source": "Its anti-androgenic properties help decrease sebum production, which is a primary factor in acne formation, making it a recognized treatment option for hormonal acne in particular [1].",
+    "type": "SUPPORTS",
+    "target": "central_claim",
+    "score": 0.67,
+    "explanation": "This supports the claim because reducing sebum production directly targets a key biological cause of acne.",
+    "relation_links": [
+      {
+        "url": "https://medlineplus.gov/druginfo/meds/a682627.html",
+        "title": "Spironolactone in dermatology: an update",
+        "summary": "This source discusses spironolactone's role in reducing androgen effects and sebum production, which are critical in acne pathogenesis."
+      }
+    ]
+  },
+  {
+    "source": "Clinical evidence supports spironolactone's efficacy and safety profile in acne treatment, which has led to its formal approval by regulatory authorities.",
+    "type": "SUPPORTS",
+    "target": "central_claim",
+    "score": 0.52,
+    "explanation": "This supports the claim because regulatory approval follows demonstrated safety and effectiveness.",
+    "relation_links": [
+      {
+        "url": "https://www.mayoclinic.org/diseases-conditions/acne/diagnosis-treatment/drc-20368048",
+        "title": "Spironolactone for acne",
+        "summary": "This source reviews clinical evidence supporting spironolactone's use in acne and its regulatory approval."
+      }
+    ]
+  },
+  {
+    "source": "The drug's ability to target the hormonal pathways involved in acne pathogenesis distinguishes it from other treatments, providing a valuable alternative for patients who do not respond well to conventional therapies [2].",
+    "type": "ATTACKS",
+    "target": "central_claim",
+    "score": 0.21,
+    "explanation": "This attacks the claim by suggesting spironolactone’s use may be more appropriate for specific patient groups rather than universally.",
+    "relation_links": [
+      {
+        "url": "https://www.ncbi.nlm.nih.gov/books/NBK554421/",
+        "title": "Off-label use of spironolactone in acne",
+        "summary": "This source discusses how spironolactone is often considered when conventional acne therapies are ineffective."
+      }
+    ]
+  },
+  {
+    "source": "This regulatory endorsement confirms its therapeutic value and widespread acceptance in acne management protocols.",
+    "type": "ATTACKS",
+    "target": "central_claim",
+    "score": 0.12,
+    "explanation": "This attacks the claim by emphasizing acceptance in practice rather than detailing the specific scope of approval.",
+    "relation_links": [
+      {
+        "url": "https://www.drugs.com/spironolactone.html",
+        "title": "Spironolactone prescribing information",
+        "summary": "This source provides prescribing details that contextualize spironolactone’s role in acne management."
+      }
+    ]
+  }
+],
+
   "links_paragraph": [
     {
       "url": "https://medlineplus.gov/druginfo/meds/a682627.html",
@@ -1190,63 +1194,64 @@ export const FROZEN_RESPONSES: Record<string, any> = {
 ,
   "central_claim": "Both Simvastatin and Ambien drugs are recommended to be taken at night.",
   "relations": [
-    {
-      "source": "Simvastatin is most effective when taken at night because cholesterol synthesis peaks during this time, enhancing its lipid-lowering effect [1].",
-      "type": "SUPPORTS",
-      "target": "central_claim",
-      "score": 0.20,
-      "explanation": "This supports the claim because the timing of Simvastatin administration aligns with biological processes that maximize its efficacy.",
-      "relation_links": [
-        {
-          "url": "https://medlineplus.gov/druginfo/meds/a692030.html",
-          "title": "Pharmacodynamics of Simvastatin",
-          "summary": "This source discusses how Simvastatin's effectiveness is linked to nighttime dosing due to liver cholesterol synthesis rhythms."
-        }
-      ]
-    },
-    {
-      "source": "Ambien is advised for nighttime use to align with the sleep cycle and promote effective sleep onset and maintenance [1].",
-      "type": "SUPPORTS",
-      "target": "central_claim",
-      "score": 0.76,
-      "explanation": "This supports the claim because Ambien's sedative properties are best utilized during the night to improve sleep quality.",
-      "relation_links": [
-        {
-          "url": "https://medlineplus.gov/druginfo/meds/a692030.html",
-          "title": "Pharmacodynamics of Ambien",
-          "summary": "This source discusses how Simvastatin's effectiveness is linked to nighttime dosing due to liver cholesterol synthesis rhythms."
-        }
-      ]
-    },
-    {
-      "source": "However, some patients may experience residual daytime drowsiness with Ambien, which raises a concern that nighttime dosing might not be optimal for all individuals.",
-      "type": "ATTACKS",
-      "target": "central_claim",
-      "score": 0.13,
-      "explanation": "This attacks the claim because it highlights a limitation in the universal recommendation of nighttime dosing for Ambien.",
-      "relation_links": [
-        {
-          "url": "https://dailymed.nlm.nih.gov/dailymed/drugInfo.cfm?setid=2f1a3600-9bd6-3651-3ab5-1e4e0b0a3916&utm_source=chatgpt.com",
-          "title": "Ambien and Daytime Drowsiness",
-          "summary": "This source discusses potential side effects of Ambien, including residual daytime drowsiness that may complicate nighttime dosing recommendations."
-        }
-      ]
-    },
-    {
-      "source": "In contrast, some studies suggest that Simvastatin's lipid-lowering effect may not significantly differ between morning and evening doses, which raises a concern that nighttime dosing is not strictly necessary.",
-      "type": "ATTACKS",
-      "target": "central_claim",
-      "score": 0.92,
-      "explanation": "This attacks the claim because it introduces evidence that challenges the necessity of nighttime dosing for Simvastatin.",
-      "relation_links": [
-        {
-          "url": "https://medlineplus.gov/cholesterol.html",
-          "title": "Simvastatin Dosing Time Studies",
-          "summary": "This source reviews studies comparing morning versus evening dosing of Simvastatin and their effects on lipid levels."
-        }
-      ]
-    }
-  ],
+  {
+    "source": "Simvastatin, a lipid-lowering agent, is most effective when taken at night because cholesterol synthesis in the liver peaks during this time, enhancing the drug's ability to reduce LDL cholesterol levels.",
+    "type": "SUPPORTS",
+    "target": "central_claim",
+    "score": 0.03,
+    "explanation": "This supports the claim because nighttime dosing aligns Simvastatin’s action with peak cholesterol synthesis.",
+    "relation_links": [
+      {
+        "url": "https://medlineplus.gov/druginfo/meds/a692030.html",
+        "title": "Pharmacodynamics of Simvastatin",
+        "summary": "This source discusses how Simvastatin's effectiveness is linked to nighttime dosing due to liver cholesterol synthesis rhythms."
+      }
+    ]
+  },
+  {
+    "source": "Ambien, a sedative-hypnotic used for insomnia, is naturally advised for nighttime use to align with the sleep cycle and promote effective sleep onset and maintenance [1].",
+    "type": "SUPPORTS",
+    "target": "central_claim",
+    "score": 0.15,
+    "explanation": "This supports the claim because Ambien’s sedative effects are intended to coincide with normal sleep timing.",
+    "relation_links": [
+      {
+        "url": "https://medlineplus.gov/druginfo/meds/a692030.html",
+        "title": "Pharmacodynamics of Ambien",
+        "summary": "This source explains why Ambien is recommended for nighttime use to support sleep onset and maintenance."
+      }
+    ]
+  },
+  {
+    "source": "Taking Simvastatin and Ambien at night also minimizes potential side effects and maximizes patient compliance.",
+    "type": "ATTACKS",
+    "target": "central_claim",
+    "score": 0.92,
+    "explanation": "This attacks the claim by framing nighttime dosing as an optimization strategy rather than a strict requirement.",
+    "relation_links": [
+      {
+        "url": "https://dailymed.nlm.nih.gov/dailymed/",
+        "title": "Medication Timing and Side Effects",
+        "summary": "This source provides general information on how medication timing can influence side effects and adherence."
+      }
+    ]
+  },
+  {
+    "source": "Clinical guidelines and pharmacokinetic studies support this dual recommendation, confirming that nighttime dosing is the optimal strategy for both drugs [2].",
+    "type": "ATTACKS",
+    "target": "central_claim",
+    "score": 0.78,
+    "explanation": "This attacks the claim by relying on guideline-based optimization rather than necessity in all cases.",
+    "relation_links": [
+      {
+        "url": "https://medlineplus.gov/druginformation.html",
+        "title": "Clinical Guidelines on Medication Timing",
+        "summary": "This source summarizes how clinical guidelines inform optimal timing for medication administration."
+      }
+    ]
+  }
+],
+
   "links_paragraph": [
     {
       "url": "https://medlineplus.gov/druginfo/meds/a692030.html",
@@ -1364,63 +1369,64 @@ export const FROZEN_RESPONSES: Record<string, any> = {
   ],
   "central_claim": "Uveitis is a common symptom of Ankylosing Spondylitis.",
   "relations": [
-    {
-      "source": "The inflammatory process in Ankylosing Spondylitis frequently involves the uveal tract, which suggests a direct link to uveitis occurrence [1].",
-      "type": "SUPPORTS",
-      "target": "central_claim",
-      "score": 0.48,
-      "explanation": "This supports the claim because inflammation in the disease often affects the eyes.",
-      "relation_links": [
-        {
-          "url": "https://medlineplus.gov/ankylosingspondylitis.html",
-          "title": "Ocular Manifestations in Ankylosing Spondylitis",
-          "summary": "This source discusses how inflammation in Ankylosing Spondylitis commonly affects the eyes, leading to uveitis."
-        }
-      ]
-    },
-    {
-      "source": "Recurrent uveitis episodes are frequently reported in patients with Ankylosing Spondylitis, which supports its commonality as a symptom [1].",
-      "type": "SUPPORTS",
-      "target": "central_claim",
-      "score": 0.52,
-      "explanation": "This supports the claim because repeated eye inflammation is a recognized feature of the disease.",
-      "relation_links": [
-        {
-          "url": "https://medlineplus.gov/ankylosingspondylitis.html",
-          "title": "Ocular Manifestations in Ankylosing Spondylitis",
-          "summary": "This source discusses how inflammation in Ankylosing Spondylitis commonly affects the eyes, leading to uveitis."
-        }
-      ]
-    },
-    {
-      "source": "However, some patients with Ankylosing Spondylitis do not develop uveitis, which raises a concern that uveitis may not be universally common across all cases.",
-      "type": "ATTACKS",
-      "target": "central_claim",
-      "score": 0.55,
-      "explanation": "This attacks the claim because not all patients experience uveitis.",
-      "relation_links": [
-        {
-          "url": "https://www.arthritis.org/ankylosing-spondylitis-patient-education",
-          "title": "Ankylosing Spondylitis Patient Guide",
-          "summary": "This guide notes variability in symptoms among patients, including the absence of uveitis in some cases."
-        }
-      ]
-    },
-    {
-      "source": "An alternative perspective indicates that other extra-articular symptoms may be more prevalent than uveitis in certain populations with Ankylosing Spondylitis.",
-      "type": "ATTACKS",
-      "target": "central_claim",
-      "score": 0.60,
-      "explanation": "This attacks the claim because it suggests other symptoms might be more common than uveitis.",
-      "relation_links": [
-        {
-          "url": "https://www.arthritis.org/ankylosing-spondylitis-patient-education",
-          "title": "Ankylosing Spondylitis Patient Guide",
-          "summary": "This guide notes variability in symptoms among patients, including the absence of uveitis in some cases."
-        }
-      ]
-    }
-  ],
+  {
+    "source": "The immune system's dysregulation in Ankylosing Spondylitis often leads to inflammation in the uveal tract, causing symptoms such as eye pain, redness, and blurred vision [1].",
+    "type": "SUPPORTS",
+    "target": "central_claim",
+    "score": 0.13,
+    "explanation": "This supports the claim because immune-driven inflammation directly affects the uveal tract.",
+    "relation_links": [
+      {
+        "url": "https://medlineplus.gov/ankylosingspondylitis.html",
+        "title": "Ocular Manifestations in Ankylosing Spondylitis",
+        "summary": "This source discusses how inflammation in Ankylosing Spondylitis commonly affects the eyes, leading to uveitis."
+      }
+    ]
+  },
+  {
+    "source": "The recurrent episodes of uveitis in patients with this condition highlight its prevalence and clinical significance in disease management [1].",
+    "type": "SUPPORTS",
+    "target": "central_claim",
+    "score": 0.23,
+    "explanation": "This supports the claim because repeated episodes indicate uveitis is a frequent manifestation.",
+    "relation_links": [
+      {
+        "url": "https://medlineplus.gov/ankylosingspondylitis.html",
+        "title": "Ocular Manifestations in Ankylosing Spondylitis",
+        "summary": "This source discusses how inflammation in Ankylosing Spondylitis commonly affects the eyes, leading to uveitis."
+      }
+    ]
+  },
+  {
+    "source": "Although uveitis is described as a common and recurrent manifestation, this reflects frequent association rather than an inevitable symptom in all cases of Ankylosing Spondylitis [1].",
+    "type": "ATTACKS",
+    "target": "central_claim",
+    "score": 0.68,
+    "explanation": "This attacks the claim by distinguishing common occurrence from universal presence.",
+    "relation_links": [
+      {
+        "url": "https://www.arthritis.org/ankylosing-spondylitis-patient-education",
+        "title": "Ankylosing Spondylitis Patient Guide",
+        "summary": "This guide notes variability in symptoms among patients, including differences in ocular involvement."
+      }
+    ]
+  },
+  {
+    "source": "While ocular involvement is clinically significant, Ankylosing Spondylitis primarily affects the spine and joints, indicating that uveitis represents an important but secondary manifestation.",
+    "type": "ATTACKS",
+    "target": "central_claim",
+    "score": 0.60,
+    "explanation": "This attacks the claim by emphasizing that uveitis is not the dominant feature of the disease.",
+    "relation_links": [
+      {
+        "url": "https://www.arthritis.org/ankylosing-spondylitis-patient-education",
+        "title": "Ankylosing Spondylitis Patient Guide",
+        "summary": "This guide outlines the primary and secondary manifestations of Ankylosing Spondylitis."
+      }
+    ]
+  }
+],
+
   "links_paragraph": [
     {
       "url": "https://medlineplus.gov/ankylosingspondylitis.html",
@@ -1595,63 +1601,64 @@ export const FROZEN_RESPONSES: Record<string, any> = {
 ,
   "central_claim": "Fever is not a common symptom of Jock Itch",
   "relations": [
-    {
-      "source": "Jock Itch is caused by a superficial fungal infection that typically does not trigger systemic symptoms such as fever because it remains localized to the skin [1].",
-      "type": "SUPPORTS",
-      "target": "central_claim",
-      "score": 0.05,
-      "explanation": "This supports the claim because the localized nature of the infection explains the absence of fever.",
-      "relation_links": [
-        {
-          "url": "https://www.mayoclinic.org/diseases-conditions/jock-itch/symptoms-causes/syc-20353807",
-          "title": "Clinical Features of Jock Itch",
-          "summary": "This source details the typical presentation of Jock Itch as a localized fungal infection without systemic symptoms."
-        }
-      ]
-    },
-    {
-      "source": "Fever generally arises from systemic inflammatory responses, which are uncommon in Jock Itch due to its superficial and localized infection [2].",
-      "type": "SUPPORTS",
-      "target": "central_claim",
-      "score": 0.31,
-      "explanation": "This supports the claim because it clarifies why fever is not expected in superficial infections like Jock Itch.",
-      "relation_links": [
-        {
-          "url": "https://my.clevelandclinic.org/health/diseases/22141-jock-itch-tinea-cruris",
-          "title": "Systemic Symptoms in Skin Infections",
-          "summary": "This article explains the mechanisms behind systemic symptoms such as fever in skin infections and why they are rare in superficial fungal infections."
-        }
-      ]
-    },
-    {
-      "source": "However, a limitation is that secondary bacterial infections can complicate Jock Itch and potentially cause fever, which raises a concern that fever might sometimes be present.",
-      "type": "ATTACKS",
-      "target": "central_claim",
-      "score": 0.07,
-      "explanation": "This attacks the claim because it introduces the possibility of fever in complicated cases.",
-      "relation_links": [
-        {
-          "url": "https://medlineplus.gov/ency/article/000876.htm",
-          "title": "Complications of Fungal Skin Infections",
-          "summary": "This source discusses how secondary bacterial infections can lead to systemic symptoms including fever."
-        }
-      ]
-    },
-    {
-      "source": "One could argue that individual variations in immune response might occasionally produce fever even in localized fungal infections like Jock Itch, suggesting fever is not impossible.",
-      "type": "ATTACKS",
-      "target": "central_claim",
-      "score": 0.27,
-      "explanation": "This attacks the claim because it highlights variability in symptom presentation that could include fever.",
-      "relation_links": [
-        {
-          "url": "https://www.health.harvard.edu/a_to_z/jock-itch-tinea-cruris-a-to-z",
-          "title": "Variability in Immune Responses to Skin Infections",
-          "summary": "This article reviews how different immune responses can alter symptom profiles in skin infections."
-        }
-      ]
-    }
-  ],
+  {
+    "source": "The fungal infection responsible for Jock Itch typically remains confined to the groin area, causing discomfort and rash without triggering the body's systemic inflammatory response that would result in fever [1].",
+    "type": "SUPPORTS",
+    "target": "central_claim",
+    "score": 0.05,
+    "explanation": "This supports the claim because localized infections do not usually provoke systemic fever responses.",
+    "relation_links": [
+      {
+        "url": "https://www.mayoclinic.org/diseases-conditions/jock-itch/symptoms-causes/syc-20353807",
+        "title": "Clinical Features of Jock Itch",
+        "summary": "This source details the typical presentation of Jock Itch as a localized fungal infection without systemic symptoms."
+      }
+    ]
+  },
+  {
+    "source": "This localized nature of the infection means that fever is rarely observed in patients suffering from Jock Itch, distinguishing it from other infections that involve deeper tissues or systemic involvement.",
+    "type": "SUPPORTS",
+    "target": "central_claim",
+    "score": 0.07,
+    "explanation": "This supports the claim by explaining why fever is uncommon in superficial fungal infections.",
+    "relation_links": [
+      {
+        "url": "https://my.clevelandclinic.org/health/diseases/22141-jock-itch-tinea-cruris",
+        "title": "Systemic Symptoms in Skin Infections",
+        "summary": "This article explains why systemic symptoms such as fever are rare in superficial fungal infections."
+      }
+    ]
+  },
+  {
+    "source": "If the infection becomes severe or complicated by a secondary bacterial infection, fever might occur, but this is an exception rather than the rule [2].",
+    "type": "ATTACKS",
+    "target": "central_claim",
+    "score": 0.42,
+    "explanation": "This attacks the claim by identifying specific circumstances under which fever may occur.",
+    "relation_links": [
+      {
+        "url": "https://medlineplus.gov/ency/article/000876.htm",
+        "title": "Complications of Fungal Skin Infections",
+        "summary": "This source discusses how secondary bacterial infections can lead to systemic symptoms including fever."
+      }
+    ]
+  },
+  {
+    "source": "While fever is generally absent, its theoretical occurrence in rare complicated cases indicates that fever cannot be entirely ruled out in all instances of Jock Itch.",
+    "type": "ATTACKS",
+    "target": "central_claim",
+    "score": 0.56,
+    "explanation": "This attacks the claim by emphasizing that rare exceptions limit absolute conclusions.",
+    "relation_links": [
+      {
+        "url": "https://www.health.harvard.edu/a_to_z/jock-itch-tinea-cruris-a-to-z",
+        "title": "Variability in Immune Responses to Skin Infections",
+        "summary": "This article reviews how rare complications and immune variability can alter symptom presentation."
+      }
+    ]
+  }
+],
+
   "links_paragraph": [
     {
       "url": "https://www.mayoclinic.org/diseases-conditions/jock-itch/symptoms-causes/syc-20353807",
@@ -1860,63 +1867,63 @@ export const FROZEN_RESPONSES: Record<string, any> = {
 ],
   "central_claim": "An adult who has not had chickenpox cannot develop shingles.",
   "relations": [
-    {
-      "source": "Shingles results from reactivation of the varicella-zoster virus that only occurs if the virus was previously acquired through chickenpox infection, which supports the claim [1].",
-      "type": "SUPPORTS",
-      "target": "central_claim",
-      "score": 0.05,
-      "explanation": "This supports the claim because shingles requires prior viral presence from chickenpox.",
-      "relation_links": [
-        {
-          "url": "https://www.cdc.gov/shingles/about/index.html",
-          "title": "Shingles (Herpes Zoster) - CDC",
-          "summary": "This source explains that shingles is caused by reactivation of the varicella-zoster virus after chickenpox infection."
-        }
-      ]
-    },
-    {
-      "source": "Without prior chickenpox infection, the varicella-zoster virus is not present in the body to reactivate later as shingles, which supports the claim [2].",
-      "type": "SUPPORTS",
-      "target": "central_claim",
-      "score": 0.14,
-      "explanation": "This supports the claim because the virus must be latent to cause shingles.",
-      "relation_links": [
-        {
-          "url": "https://www.mayoclinic.org/diseases-conditions/shingles/symptoms-causes/syc-20353054",
-          "title": "Shingles - Mayo Clinic",
-          "summary": "This source details that shingles cannot occur without prior varicella-zoster virus infection."
-        }
-      ]
-    },
-    {
-      "source": "However, a competing interpretation suggests that vaccination could introduce the virus, so adults without chickenpox but vaccinated might still develop shingles.",
-      "type": "ATTACKS",
-      "target": "central_claim",
-      "score": 0.17,
-      "explanation": "This attacks the claim because vaccination may provide an alternative viral source for shingles.",
-      "relation_links": [
-        {
-          "url": "https://www.cdc.gov/shingles/index.html",
-          "title": "Shingles Vaccination Information - CDC",
-          "summary": "This source discusses how shingles can occur after vaccination, complicating the link to natural chickenpox infection."
-        }
-      ]
-    },
-    {
-      "source": "One could argue that some adults might have had asymptomatic chickenpox infections, which raises a concern that they could develop shingles despite no known history of chickenpox.",
-      "type": "ATTACKS",
-      "target": "central_claim",
-      "score": 0.03,
-      "explanation": "This attacks the claim because unrecognized prior infection could allow shingles development.",
-      "relation_links": [
-        {
-          "url": "https://www.healthline.com/health/shingles",
-          "title": "Shingles Causes and Risk Factors - Healthline",
-          "summary": "This source notes that some people may have had chickenpox without symptoms, enabling shingles later."
-        }
-      ]
-    }
-  ],
+  {
+    "source": "Without a prior chickenpox infection, the virus is not present in the body to reactivate later as shingles, making it impossible for shingles to occur in someone who has never had chickenpox [1].",
+    "type": "SUPPORTS",
+    "target": "central_claim",
+    "score": 0.05,
+    "explanation": "This supports the claim because shingles requires latent varicella-zoster virus from a prior infection.",
+    "relation_links": [
+      {
+        "url": "https://www.cdc.gov/shingles/about/index.html",
+        "title": "Shingles (Herpes Zoster) - CDC",
+        "summary": "This source explains that shingles is caused by reactivation of the varicella-zoster virus after chickenpox infection."
+      }
+    ]
+  },
+  {
+    "source": "In adults who have neither had chickenpox nor received the vaccine, the absence of the virus means shingles cannot manifest.",
+    "type": "SUPPORTS",
+    "target": "central_claim",
+    "score": 0.02,
+    "explanation": "This supports the claim by emphasizing that shingles cannot occur without prior viral exposure.",
+    "relation_links": [
+      {
+        "url": "https://www.mayoclinic.org/diseases-conditions/shingles/symptoms-causes/syc-20353054",
+        "title": "Shingles - Mayo Clinic",
+        "summary": "This source details that shingles cannot occur without prior varicella-zoster virus infection."
+      }
+    ]
+  },
+  {
+    "source": "Vaccination against chickenpox can also introduce a weakened form of the virus that may later reactivate as shingles.",
+    "type": "ATTACKS",
+    "target": "central_claim",
+    "score": 0.63,
+    "explanation": "This attacks the claim by identifying vaccination as an alternative source of viral latency.",
+    "relation_links": [
+      {
+        "url": "https://www.cdc.gov/shingles/index.html",
+        "title": "Shingles Vaccination Information - CDC",
+        "summary": "This source discusses how shingles can occur after vaccination, not only after natural chickenpox infection."
+      }
+    ]
+  },
+  {
+    "source": "Because shingles strictly depends on prior viral exposure, uncertainty about whether an adult previously had chickenpox or vaccination complicates definitive claims about shingles risk [2].",
+    "type": "ATTACKS",
+    "target": "central_claim",
+    "score": 0.43,
+    "explanation": "This attacks the claim by highlighting uncertainty about prior exposure status.",
+    "relation_links": [
+      {
+        "url": "https://www.healthline.com/health/shingles",
+        "title": "Shingles Causes and Risk Factors - Healthline",
+        "summary": "This source notes that some individuals may have had prior exposure without clear clinical history."
+      }
+    ]
+  }
+],
   "links_paragraph": [
     {
       "url": "https://www.cdc.gov/shingles/about/index.html",
